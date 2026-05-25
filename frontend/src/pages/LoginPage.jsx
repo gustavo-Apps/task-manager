@@ -1,25 +1,19 @@
-/**
- * Página: Login
- *
- * Formulário de autenticação. Redireciona para / se já estiver logado.
- */
-
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
-
-  const [form, setForm]         = useState({ email: "", password: "" });
+  const navigate = useNavigate();
+  const [form, setForm]             = useState({ email: "", password: "" });
   const [submitting, setSubmitting] = useState(false);
 
-  // Quando isAuthenticated mudar para true (após login() atualizar o estado),
-  // o React re-renderiza este componente e o Navigate abaixo redireciona.
-  // Não usamos navigate() no handler para evitar race condition com setToken.
-  if (isAuthenticated) return <Navigate to="/" replace />;
+  // Redireciona se já autenticado (ex: voltar pelo botão do browser)
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   function handleChange(e) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -32,8 +26,8 @@ export default function LoginPage() {
     try {
       const res = await api.post("/auth/login", form);
       const { token, user } = res.data.data;
-      // login() chama setToken + setUser → React re-renderiza → if (isAuthenticated) acima redireciona
       login(token, user);
+      navigate("/", { replace: true });
     } catch (err) {
       toast.error(err.response?.data?.message || "Erro ao fazer login.");
     } finally {

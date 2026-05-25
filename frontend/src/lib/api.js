@@ -22,14 +22,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Se o backend retornar 401, limpa a sessão e redireciona para login
+// Se o backend retornar 401 em rotas protegidas, limpa a sessão e redireciona.
+// Rotas de /auth/* (login, register) NÃO disparam o redirect — o erro
+// deve chegar ao catch do componente para exibir feedback ao usuário.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthRoute = error.config?.url?.startsWith("/auth/");
+    if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      window.location.href = "/login";
+      // Usa replace para não empilhar /login no histórico
+      window.location.replace("/login");
     }
     return Promise.reject(error);
   }

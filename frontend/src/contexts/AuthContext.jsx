@@ -1,10 +1,3 @@
-/**
- * Context de autenticação
- *
- * Provê: user, token, login(), logout(), isAuthenticated
- * Persiste token e user no localStorage entre sessões.
- */
-
 import { createContext, useContext, useState, useEffect } from "react";
 import api from "../lib/api";
 
@@ -18,9 +11,11 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("token"));
   const [loading, setLoading] = useState(true);
 
-  // Valida o token salvo na inicialização
   useEffect(() => {
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     api.get("/auth/me")
       .then((res) => setUser(res.data.data.user))
