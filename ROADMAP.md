@@ -16,7 +16,7 @@
 - [ ] Testar todos os endpoints com Postman ou Thunder Client
 - [ ] Validar fluxo: login → criar tarefa → gerar .md
 - [ ] Documentar endpoints no README com exemplos de request/response
-- [ ] Adicionar rate limiting nas rotas públicas (express-rate-limit)
+- [x] Adicionar rate limiting nas rotas públicas (express-rate-limit)
 - [ ] Validar variáveis de ambiente obrigatórias na inicialização
 
 ### Sprint 3 — Funcionalidades Extras
@@ -33,21 +33,21 @@
 ### Stack sugerida: React + Vite + TailwindCSS
 
 ### Sprint 4 — UI Base
-- [ ] Setup React + Vite
-- [ ] Tela de login com armazenamento seguro do token
-- [ ] Dashboard da semana atual com lista de tarefas
-- [ ] Formulário de nova tarefa (com autocomplete de tipo)
+- [x] Setup React + Vite
+- [x] Tela de login com armazenamento seguro do token
+- [x] Dashboard da semana atual com lista de tarefas
+- [x] Formulário de nova tarefa (com autocomplete de tipo)
 
 ### Sprint 5 — Funcionalidades UI
-- [ ] Listagem de semanas anteriores
-- [ ] Visualização de relatório com filtros
-- [ ] Botão "Gerar Markdown" com download automático
-- [ ] Cards visuais por tipo de atividade (cores)
+- [x] Listagem de semanas anteriores
+- [x] Visualização de relatório com filtros
+- [x] Botão "Gerar Markdown" com download automático
+- [x] Cards visuais por tipo de atividade (cores)
 
 ### Sprint 6 — Polimento
-- [ ] Tema escuro (dark mode)
+- [x] Tema escuro (dark mode)
 - [ ] Responsividade mobile
-- [ ] Toast notifications (sucesso/erro)
+- [x] Toast notifications (sucesso/erro)
 - [ ] Loading states e skeleton screens
 
 ---

@@ -18,6 +18,7 @@ const EMPTY_FORM = {
   title:            "",
   description:      "",
   task_date:        new Date().toISOString().slice(0, 10),
+  task_end_date:    "",
   azure_ticket_id:  "",
   discord_link:     "",
   notes:            "",
@@ -45,6 +46,7 @@ export default function TaskFormPage() {
           title:            t.title             ?? "",
           description:      t.description       ?? "",
           task_date:        t.task_date         ?? "",
+          task_end_date:    t.task_end_date     ?? "",
           azure_ticket_id:  t.azure_ticket_id   ?? "",
           discord_link:     t.discord_link      ?? "",
           notes:            t.notes             ?? "",
@@ -173,7 +175,7 @@ export default function TaskFormPage() {
         </Field>
 
         {/* Data */}
-        <Field label="Data da atividade">
+        <Field label="Data de inicio">
           <input
             type="date"
             name="task_date"
@@ -182,6 +184,23 @@ export default function TaskFormPage() {
             required
             className={inputCls}
           />
+        </Field>
+
+        {/* Data fim */}
+        <Field label="Data de termino (opcional — preencha se a tarefa durou mais de um dia)">
+          <input
+            type="date"
+            name="task_end_date"
+            value={form.task_end_date}
+            onChange={handleChange}
+            min={form.task_date || undefined}
+            className={inputCls}
+          />
+          {form.task_end_date && form.task_end_date !== form.task_date && (
+            <p className="text-xs text-blue-400 mt-1">
+              No .md, os dias intermediarios aparecerao como "Continuando {form.activity_type_id || "atividade"} do: {form.title || "..."}"
+            </p>
+          )}
         </Field>
 
         {/* Descrição */}

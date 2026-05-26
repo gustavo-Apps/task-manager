@@ -10,10 +10,14 @@ import { Link } from "react-router-dom";
 import api from "../lib/api";
 import toast from "react-hot-toast";
 import Badge from "../components/Badge";
+import { useLookups } from "../hooks/useLookups";
 
 export default function DashboardPage() {
-  const [report, setReport]   = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [report, setReport]         = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const { taskStatuses } = useLookups();
 
   useEffect(() => {
     // Busca o relatório mais recente (semana atual, se existir)
@@ -51,6 +55,10 @@ export default function DashboardPage() {
     return <p className="text-sm text-gray-500">Carregando...</p>;
   }
 
+  const filteredTasks = report?.tasks?.filter((task) =>
+    statusFilter ? task.taskStatus?.id === Number(statusFilter) : true
+  ) ?? [];
+
   return (
     <div className="max-w-3xl">
       {/* Cabeçalho */}
@@ -77,7 +85,21 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {/* Filtro por status */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded px-2 py-2 focus:outline-none focus:border-gray-500"
+          >
+            <option value="">Todos os status</option>
+            {taskStatuses.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+
           <Link
             to="/tasks/new"
             className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-3 py-2 rounded transition-colors"
@@ -96,16 +118,22 @@ export default function DashboardPage() {
       </div>
 
       {/* Lista de tarefas */}
-      {!report || report.tasks.length === 0 ? (
+      {!report || filteredTasks.length === 0 ? (
         <div className="border border-dashed border-gray-800 rounded-lg p-10 text-center">
-          <p className="text-sm text-gray-600">Nenhuma atividade registrada nesta semana.</p>
-          <Link to="/tasks/new" className="text-xs text-blue-500 hover:underline mt-2 inline-block">
-            Adicionar primeira tarefa
-          </Link>
+          <p className="text-sm text-gray-600">
+            {statusFilter
+              ? "Nenhuma atividade com este status nesta semana."
+              : "Nenhuma atividade registrada nesta semana."}
+          </p>
+          {!statusFilter && (
+            <Link to="/tasks/new" className="text-xs text-blue-500 hover:underline mt-2 inline-block">
+              Adicionar primeira tarefa
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
-          {report.tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <div
               key={task.id}
               className="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3 flex items-start justify-between gap-4"

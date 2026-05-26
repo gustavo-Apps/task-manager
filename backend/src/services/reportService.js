@@ -96,11 +96,25 @@ async function generateMarkdown(reportId, userId) {
     lines.push("## Atividades Realizadas");
     lines.push("");
 
-    // Agrupa tasks por data
+    // Agrupa tasks por data — tasks com task_end_date aparecem em cada dia do intervalo
     const tasksByDate = tasks.reduce((acc, task) => {
-      const key = task.task_date;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(task);
+      const start = task.task_date;
+      const end   = task.task_end_date || task.task_date;
+
+      // Gera todas as datas entre start e end (inclusive)
+      const dates = [];
+      const cur = new Date(start + "T00:00:00Z");
+      const last = new Date(end   + "T00:00:00Z");
+      while (cur <= last) {
+        dates.push(cur.toISOString().slice(0, 10));
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
+
+      dates.forEach((date, idx) => {
+        if (!acc[date]) acc[date] = [];
+        acc[date].push({ task, isFirstDay: idx === 0 });
+      });
+
       return acc;
     }, {});
 
@@ -111,27 +125,32 @@ async function generateMarkdown(reportId, userId) {
       lines.push(`### ${formatDatePtBR(date)}`);
       lines.push("");
 
-      for (const task of tasksByDate[date]) {
+      for (const { task, isFirstDay } of tasksByDate[date]) {
         const statusLabel = task.taskStatus?.name || "—";
         const typeLabel = task.activityType?.name || "—";
+        const isMultiDay = task.task_end_date && task.task_end_date !== task.task_date;
 
-        lines.push(`- **[${typeLabel}]** ${task.title} *(${statusLabel})*`);
+        // Primeiro dia: título normal. Dias seguintes: "Continuando..."
+        const displayTitle = isFirstDay || !isMultiDay
+          ? task.title
+          : `Continuando ${task.activityType?.name || "atividade"} do: ${task.title}`;
 
-        if (task.description) {
-          // Indenta a descrição como bloco dentro do item
-          lines.push(`  > ${task.description}`);
-        }
+        lines.push(`- **[${typeLabel}]** ${displayTitle} *(${statusLabel})*`);
 
-        if (task.azure_ticket_id) {
-          lines.push(`  - Ticket Azure: \`${task.azure_ticket_id}\``);
-        }
-
-        if (task.discord_link) {
-          lines.push(`  - Topico Discord: ${task.discord_link}`);
-        }
-
-        if (task.notes) {
-          lines.push(`  - Observacoes: ${task.notes}`);
+        // Descrição e detalhes só no primeiro dia para não repetir
+        if (isFirstDay) {
+          if (task.description) {
+            lines.push(`  > ${task.description}`);
+          }
+          if (task.azure_ticket_id) {
+            lines.push(`  - Ticket Azure: \`${task.azure_ticket_id}\``);
+          }
+          if (task.discord_link) {
+            lines.push(`  - Topico Discord: ${task.discord_link}`);
+          }
+          if (task.notes) {
+            lines.push(`  - Observacoes: ${task.notes}`);
+          }
         }
 
         lines.push("");

@@ -50,6 +50,12 @@ Task.init(
       type: DataTypes.DATEONLY,
       allowNull: false,
     },
+    // Data de término — quando a tarefa dura mais de um dia.
+    // Se nulo, assume-se que durou apenas o dia de task_date.
+    task_end_date: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
     task_status_id: {
       type: DataTypes.INTEGER,
       allowNull: false,

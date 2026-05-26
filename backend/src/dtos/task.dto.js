@@ -25,6 +25,12 @@ const createTaskSchema = Joi.object({
   azure_ticket_id: Joi.string().max(50).optional().allow("", null),
 
   notes: Joi.string().max(2000).optional().allow("", null),
+
+  task_end_date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .allow("", null)
+    .messages({ "string.pattern.base": "task_end_date deve estar no formato YYYY-MM-DD" }),
 });
 
 const updateTaskSchema = Joi.object({
@@ -38,6 +44,11 @@ const updateTaskSchema = Joi.object({
   discord_link: Joi.string().uri().max(500).optional().allow("", null),
   azure_ticket_id: Joi.string().max(50).optional().allow("", null),
   notes: Joi.string().max(2000).optional().allow("", null),
+  task_end_date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .allow("", null)
+    .messages({ "string.pattern.base": "task_end_date deve estar no formato YYYY-MM-DD" }),
 }).min(1); // ao menos um campo deve ser enviado no update
 
 module.exports = { createTaskSchema, updateTaskSchema };

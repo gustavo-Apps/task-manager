@@ -74,6 +74,7 @@ async function createTask(userId, data) {
     title,
     description: data.description || null,
     task_date: data.task_date,
+    task_end_date: data.task_end_date || null,
     task_status_id: data.task_status_id,
     discord_link: data.discord_link || null,
     azure_ticket_id: data.azure_ticket_id || null,
