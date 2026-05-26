@@ -1,0 +1,12 @@
+{
+  "name": "weekly-reports",
+  "version": "1.0.0",
+  "description": "Weekly Reports — runner raiz (back + front)",
+  "scripts": {
+    "dev": "concurrently --kill-others --prefix-colors bgBlue,bgCyan --names \"BACK,FRONT\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "start": "concurrently --kill-others --prefix-colors bgBlue,bgCyan --names \"BACK,FRONT\" \"npm run start --prefix backend\" \"npm run dev --prefix frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

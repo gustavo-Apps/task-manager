@@ -41,6 +41,14 @@ export default function App() {
             }
           />
           <Route
+            path="/tasks"
+            element={
+              <PrivateRoute>
+                <Layout><TaskFormPage /></Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/tasks/new"
             element={
               <PrivateRoute>
