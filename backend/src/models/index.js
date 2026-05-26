@@ -7,7 +7,7 @@
  * Como importar em outros arquivos:
  *   const { User, Task, WeeklyReport, ActivityType } = require("../models");
  */
-
+const UserCargos = require("./Cargos");
 const User = require("./User");
 const ActivityType = require("./ActivityType");
 const TaskStatus = require("./TaskStatus");
@@ -34,4 +34,4 @@ Task.belongsTo(ActivityType, { foreignKey: "activity_type_id", as: "activityType
 TaskStatus.hasMany(Task, { foreignKey: "task_status_id", as: "tasks" });
 Task.belongsTo(TaskStatus, { foreignKey: "task_status_id", as: "taskStatus" });
 
-module.exports = { User, ActivityType, TaskStatus, WeeklyReport, Task };
+module.exports = { User, ActivityType, TaskStatus, WeeklyReport, Task, UserCargos };

@@ -21,11 +21,11 @@ const registerSchema = Joi.object({
   email: Joi.string().email().max(150).required(),
 
   password: Joi.string()
-    .min(8)
+    .min(3)
     .max(72) // bcrypt limita a 72 chars
     .required()
     .messages({
-      "string.min": "Senha deve ter pelo menos 8 caracteres",
+      "string.min": "Senha deve ter pelo menos 3 caracteres",
     }),
 });
 

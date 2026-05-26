@@ -12,7 +12,7 @@ require("dotenv").config();
 
 const bcrypt = require("bcryptjs");
 const { sequelize } = require("../config/database");
-const { User, ActivityType, TaskStatus } = require("../models");
+const { User, ActivityType, TaskStatus, UserCargos } = require("../models");
 
 const TASK_STATUSES = [
   { name: "Pendente",      description: "Aguardando inicio",          color: "#F59E0B", sort_order: 1 },
@@ -31,6 +31,13 @@ const ACTIVITY_TYPES = [
   { name: "Analise", description: "Analise de requisito, bug ou sistema", color: "#06B6D4" },
   { name: "Deploy", description: "Publicacao ou configuracao de ambiente", color: "#EC4899" },
   { name: "Suporte", description: "Suporte a usuarios ou equipes", color: "#6B7280" },
+];
+const USER_CARGOS = [
+  { name: "Desenvolvedor", description: "Responsavel por implementar funcionalidades e corrigir bugs" },
+  { name: "Analista de Testes", description: "Responsavel por criar e executar casos de teste" },
+  { name: "Gerente de Projeto", description: "Responsavel por planejar, coordenar e acompanhar o progresso do projeto" },
+  { name: "Analista de Requisitos", description: "Responsavel por coletar, analisar e documentar os requisitos do sistema" },
+  { name: "Engenheiro de DevOps", description: "Responsavel por configurar e manter os ambientes de desenvolvimento, teste e producao" },
 ];
 
 async function seed() {
@@ -55,6 +62,16 @@ async function seed() {
       });
       console.log(`ActivityType "${type.name}": ${created ? "criado" : "ja existe"}`);
     }
+    for (const cargo of USER_CARGOS) {
+      const [, created] = await UserCargos.findOrCreate({
+        where: {
+          name: cargo.name,
+          description: cargo.description
+        },
+        defaults: cargo,
+      });
+      console.log(`UserCargo "${cargo.name}": ${created ? "criado" : "ja existe"}`);
+    }
 
     // Usuário admin padrão (troque a senha antes de ir para produção!)
     const [adminUser, created] = await User.unscoped().findOrCreate({
@@ -72,7 +89,6 @@ async function seed() {
       console.log("  Email: admin@weeklyreports.local");
       console.log("  Senha: Admin@12345  ← troque em producao!");
     }
-
     console.log("\nSeed concluido com sucesso.");
     process.exit(0);
   } catch (err) {

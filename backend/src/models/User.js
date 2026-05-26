@@ -44,6 +44,11 @@ User.init(
       defaultValue: "user",
       allowNull: false,
     },
+    cargo: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: { model: "user_cargos", key: "id" },
+    },
     is_active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
