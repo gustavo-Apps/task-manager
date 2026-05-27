@@ -39,4 +39,19 @@ const close = asyncHandler(async (req, res) => {
   return success(res, { report });
 });
 
-module.exports = { list, getOne, downloadMarkdown, close };
+const downloadMarkdownForPeriod = asyncHandler(async (req, res) => {
+  const { dataInicio, dataFim } = req.query;
+  const filePath = await reportService.generateMarkdownForPeriod(
+    req.user.id,
+    dataInicio,
+    dataFim
+  );
+
+  res.download(filePath, path.basename(filePath), (err) => {
+    if (err) {
+      console.error("Erro ao enviar arquivo de periodo:", err.message);
+    }
+  });
+});
+
+module.exports = { list, getOne, downloadMarkdown, downloadMarkdownForPeriod, close };

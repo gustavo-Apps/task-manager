@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 
 const NAV_ITEMS = [
   { to: "/",        label: "Dashboard"  },
-  { to: "/tasks",   label: "Tarefas"    },
+  { to: "/tickets", label: "Tickets"    },
   { to: "/reports", label: "Relatorios" },
 ];
 

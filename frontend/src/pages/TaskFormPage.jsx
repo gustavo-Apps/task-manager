@@ -6,7 +6,7 @@
  * e preenchido automaticamente com "Testado Hoje".
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../lib/api";
 import { useLookups } from "../hooks/useLookups";
@@ -30,8 +30,10 @@ export default function TaskFormPage() {
   const navigate = useNavigate();
 
   const { activityTypes, taskStatuses, loading: loadingLookups } = useLookups();
-  const [form, setForm]       = useState(EMPTY_FORM);
-  const [loading, setLoading] = useState(false);
+  const [form, setForm]             = useState(EMPTY_FORM);
+  const [loading, setLoading]       = useState(false);
+  const [ticketWarning, setTicketWarning] = useState(null); // { week_number, year }
+  const ticketCheckTimeout = useRef(null);
 
   // Em modo edição, carrega os dados da tarefa existente
   useEffect(() => {
@@ -63,11 +65,39 @@ export default function TaskFormPage() {
   }, [form.azure_ticket_id]);
 
   function handleChange(e) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+
+    // Verifica ticket duplicado pendente com debounce de 500ms
+    if (name === "azure_ticket_id") {
+      setTicketWarning(null);
+      clearTimeout(ticketCheckTimeout.current);
+      if (value.trim()) {
+        ticketCheckTimeout.current = setTimeout(async () => {
+          try {
+            const res = await api.get(`/tasks/check-ticket?azure_ticket_id=${encodeURIComponent(value.trim())}`);
+            if (res.data.data.existing) {
+              const { week_number, year } = res.data.data.existing.weeklyReport;
+              const statusName = res.data.data.existing.taskStatus?.name || "em aberto";
+              setTicketWarning({ week_number, year, statusName });
+            }
+          } catch { /* silencioso */ }
+        }, 500);
+      }
+    }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+
+    // Se ha ticket pendente duplicado, pede confirmacao antes de salvar
+    if (ticketWarning && !isEdit) {
+      const ok = confirm(
+        `O ticket #${form.azure_ticket_id} ja existe com status "${ticketWarning.statusName}" na semana ${ticketWarning.week_number}/${ticketWarning.year}.\n\nDeseja continuar mesmo assim?`
+      );
+      if (!ok) return;
+    }
+
     setLoading(true);
 
     // Limpa campos vazios para não enviar strings vazias desnecessariamente
@@ -124,7 +154,12 @@ export default function TaskFormPage() {
             placeholder="ex: 2819"
             className={inputCls}
           />
-          {ticketPreenchido && (
+          {ticketWarning && (
+            <p className="text-xs text-yellow-400 mt-1">
+              Ticket #{form.azure_ticket_id} ja existe com status "{ticketWarning.statusName}" na semana {ticketWarning.week_number}/{ticketWarning.year}. Ao salvar, sera solicitada confirmacao.
+            </p>
+          )}
+          {ticketPreenchido && !ticketWarning && (
             <p className="text-xs text-blue-400 mt-1">Titulo preenchido automaticamente: "Testado Hoje"</p>
           )}
         </Field>

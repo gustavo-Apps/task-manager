@@ -7,6 +7,7 @@
 
 const taskService = require("../services/taskService");
 const { success, created } = require("../utils/response");
+const AppError = require("../utils/AppError");
 
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -41,4 +42,29 @@ const remove = asyncHandler(async (req, res) => {
   return success(res, { message: "Tarefa removida com sucesso." });
 });
 
-module.exports = { create, list, getOne, update, remove };
+/**
+ * GET /api/tasks/check-ticket?azure_ticket_id=X
+ * Retorna a task pendente existente com esse ticket, ou null.
+ */
+const checkTicket = asyncHandler(async (req, res) => {
+  const { azure_ticket_id } = req.query;
+  if (!azure_ticket_id) throw new AppError("azure_ticket_id e obrigatorio.", 400);
+
+  const existing = await taskService.checkTicketPending(req.user.id, azure_ticket_id);
+  return success(res, { existing: existing || null });
+});
+
+/**
+ * GET /api/tasks/tickets?from=YYYY-MM-DD&to=YYYY-MM-DD
+ * Lista tickets testados (azure_ticket_id preenchido) no intervalo.
+ */
+const listTickets = asyncHandler(async (req, res) => {
+  const { from, to } = req.query;
+  if (!from || !to) throw new AppError("from e to sao obrigatorios.", 400);
+
+  const tickets = await taskService.listTickets(req.user.id, from, to);
+  
+  return success(res, { tickets });
+});
+
+module.exports = { create, list, getOne, update, remove, checkTicket, listTickets };

@@ -10,6 +10,7 @@ import DashboardPage    from "./pages/DashboardPage";
 import TaskFormPage     from "./pages/TaskFormPage";
 import ReportsPage      from "./pages/ReportsPage";
 import ReportDetailPage from "./pages/ReportDetailPage";
+import TicketsPage      from "./pages/TicketsPage";
 
 export default function App() {
   return (
@@ -77,6 +78,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <Layout><ReportDetailPage /></Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/tickets"
+            element={
+              <PrivateRoute>
+                <Layout><TicketsPage /></Layout>
               </PrivateRoute>
             }
           />

@@ -10,6 +10,7 @@
  * 4. Garantir que o usuário só acessa suas próprias tarefas
  */
 
+const { Op } = require("sequelize");
 const { Task, WeeklyReport, ActivityType, TaskStatus, User } = require("../models");
 const { getISOWeek, getWeekBounds } = require("../utils/isoWeek");
 const AppError = require("../utils/AppError");
@@ -111,7 +112,7 @@ async function listTasks(userId, filters = {}) {
       { model: ActivityType, as: "activityType" },
       { model: TaskStatus, as: "taskStatus" },
     ],
-    order: [["task_date", "DESC"]],
+    order: [["task_date", "DESC"], ["taskStatus", "name", "ASC"]],
   });
 }
 
@@ -168,3 +169,54 @@ async function deleteTask(taskId, userId) {
 }
 
 module.exports = { createTask, listTasks, getTask, updateTask, deleteTask };
+
+/**
+ * Verifica se um azure_ticket_id ja existe em tasks com status "Pendente"
+ * em qualquer semana do usuario.
+ *
+ * @param {number} userId
+ * @param {string} azureTicketId
+ * @returns {Promise<Task|null>}
+ */
+async function checkTicketPending(userId, azureTicketId) {
+  // Busca o status "Concluido" para excluir da verificacao
+  const doneStatus = await TaskStatus.findOne({ where: { name: "Concluido" } });
+
+  return Task.findOne({
+    where: {
+      user_id: userId,
+      azure_ticket_id: azureTicketId,
+      ...(doneStatus ? { task_status_id: { [Op.ne]: doneStatus.id } } : {}),
+    },
+    include: [
+      { model: WeeklyReport, as: "weeklyReport", attributes: ["week_number", "year"] },
+      { model: TaskStatus, as: "taskStatus", attributes: ["name", "color"] },
+    ],
+  });
+}
+
+/**
+ * Lista todas as tasks com azure_ticket_id num intervalo de datas.
+ *
+ * @param {number} userId
+ * @param {string} from  YYYY-MM-DD
+ * @param {string} to    YYYY-MM-DD
+ * @returns {Promise<Task[]>}
+ */
+async function listTickets(userId, from, to) {
+  return Task.findAll({
+    where: {
+      user_id: userId,
+      azure_ticket_id: { [Op.not]: null },
+      task_date: { [Op.between]: [from, to] },
+    },
+    include: [
+      { model: ActivityType, as: "activityType" },
+      { model: TaskStatus,   as: "taskStatus"   },
+      { model: WeeklyReport, as: "weeklyReport", attributes: ["week_number", "year"] },
+    ],
+    order: [["task_date", "ASC"]],
+  });
+}
+
+module.exports = { createTask, listTasks, getTask, updateTask, deleteTask, checkTicketPending, listTickets };

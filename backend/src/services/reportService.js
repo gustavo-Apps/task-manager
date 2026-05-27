@@ -6,6 +6,7 @@
 
 const path = require("path");
 const fs = require("fs");
+const { Op } = require("sequelize");
 const { WeeklyReport, Task, ActivityType, TaskStatus, User } = require("../models");
 const { formatDatePtBR } = require("../utils/isoWeek");
 const AppError = require("../utils/AppError");
@@ -236,4 +237,159 @@ async function closeReport(reportId, userId) {
   return report;
 }
 
-module.exports = { listReports, getReport, generateMarkdown, closeReport };
+/**
+ * Gera um arquivo Markdown para um período customizado (data inicio → data fim).
+ *
+ * Busca tarefas diretamente por task_date no intervalo, sem depender de WeeklyReport.
+ *
+ * @param {number} userId
+ * @param {string} dataInicio  Formato YYYY-MM-DD
+ * @param {string} dataFim     Formato YYYY-MM-DD
+ * @returns {Promise<string>} Caminho absoluto do arquivo .md gerado
+ */
+async function generateMarkdownForPeriod(userId, dataInicio, dataFim) {
+  if (!dataInicio || !dataFim) {
+    throw new AppError("Parâmetros dataInicio e dataFim são obrigatórios.", 400);
+  }
+
+  if (dataInicio > dataFim) {
+    throw new AppError("dataInicio não pode ser posterior a dataFim.", 400);
+  }
+
+  const user = await User.findByPk(userId, { attributes: ["id", "username", "email"] });
+  if (!user) throw new AppError("Usuário não encontrado.", 404);
+
+  const tasks = await Task.findAll({
+    where: {
+      user_id: userId,
+      task_date: { [Op.between]: [dataInicio, dataFim] },
+    },
+    include: [
+      { model: ActivityType, as: "activityType" },
+      { model: TaskStatus,   as: "taskStatus"   },
+    ],
+    order: [["task_date", "ASC"]],
+  });
+
+  const lines = [];
+
+  // ─── Cabeçalho ─────────────────────────────────────────────────────────────
+  lines.push(`# Relatório por Período`);
+  lines.push("");
+  lines.push(`**Colaborador:** ${user.username}`);
+  lines.push(`**Período:** ${formatDatePtBR(dataInicio)} a ${formatDatePtBR(dataFim)}`);
+  lines.push(`**Gerado em:** ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`);
+  lines.push("");
+  lines.push("---");
+  lines.push("");
+
+  if (tasks.length === 0) {
+    lines.push("_Nenhuma atividade registrada neste período._");
+  } else {
+    // ─── Atividades agrupadas por data ────────────────────────────────────────
+    lines.push("## Atividades Realizadas");
+    lines.push("");
+
+    const tasksByDate = tasks.reduce((acc, task) => {
+      const start = task.task_date;
+      const end   = task.task_end_date || task.task_date;
+
+      const dates = [];
+      const cur  = new Date(start + "T00:00:00Z");
+      const last = new Date(end   + "T00:00:00Z");
+      // Limita ao dataFim para não vazar fora do período solicitado
+      const fence = new Date(dataFim + "T00:00:00Z");
+      while (cur <= last && cur <= fence) {
+        dates.push(cur.toISOString().slice(0, 10));
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
+
+      dates.forEach((date, idx) => {
+        if (!acc[date]) acc[date] = [];
+        acc[date].push({ task, isFirstDay: idx === 0 });
+      });
+
+      return acc;
+    }, {});
+
+    const sortedDates = Object.keys(tasksByDate).sort();
+
+    for (const date of sortedDates) {
+      lines.push(`### ${formatDatePtBR(date)}`);
+      lines.push("");
+
+      for (const { task, isFirstDay } of tasksByDate[date]) {
+        const statusLabel = task.taskStatus?.name  || "—";
+        const typeLabel   = task.activityType?.name || "—";
+        const isMultiDay  = task.task_end_date && task.task_end_date !== task.task_date;
+
+        const displayTitle = isFirstDay || !isMultiDay
+          ? task.title
+          : `Continuando ${task.activityType?.name || "atividade"} do: ${task.title}`;
+
+        lines.push(`- **[${typeLabel}]** ${displayTitle} *(${statusLabel})*`);
+
+        if (isFirstDay) {
+          if (task.description)     lines.push(`  > ${task.description}`);
+          if (task.azure_ticket_id) lines.push(`  - Ticket Azure: \`${task.azure_ticket_id}\``);
+          if (task.discord_link)    lines.push(`  - Topico Discord: ${task.discord_link}`);
+          if (task.notes)           lines.push(`  - Observacoes: ${task.notes}`);
+        }
+
+        lines.push("");
+      }
+    }
+
+    // ─── Tickets testados ─────────────────────────────────────────────────────
+    const ticketTasks = tasks.filter((t) => t.azure_ticket_id);
+
+    if (ticketTasks.length > 0) {
+      lines.push("---");
+      lines.push("");
+      lines.push("## Tickets Testados");
+      lines.push("");
+      lines.push("| Ticket | Descricao | Data | Status |");
+      lines.push("|--------|-----------|------|--------|");
+
+      for (const task of ticketTasks) {
+        const statusLabel = task.taskStatus?.name || "—";
+        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${task.task_date} | ${statusLabel} |`);
+      }
+
+      lines.push("");
+    }
+
+    // ─── Resumo ───────────────────────────────────────────────────────────────
+    lines.push("---");
+    lines.push("");
+    lines.push("## Resumo");
+    lines.push("");
+    lines.push(`- **Total de atividades:** ${tasks.length}`);
+    lines.push(`- **Tickets testados:** ${ticketTasks.length}`);
+    lines.push(`- **Atividades concluidas:** ${tasks.filter((t) => t.taskStatus?.name?.toLowerCase().includes("conclu")).length}`);
+  }
+
+  lines.push("");
+  lines.push("---");
+  lines.push("_Relatorio gerado automaticamente pelo sistema Weekly Reports._");
+
+  // ─── Salva o arquivo ──────────────────────────────────────────────────────
+  const reportsDir = path.resolve(
+    __dirname,
+    "../../",
+    process.env.REPORTS_DIR || "reports/generated"
+  );
+
+  if (!fs.existsSync(reportsDir)) {
+    fs.mkdirSync(reportsDir, { recursive: true });
+  }
+
+  const filename = `relatorio-periodo-${dataInicio}-${dataFim}-${user.username}.md`;
+  const filePath = path.join(reportsDir, filename);
+
+  fs.writeFileSync(filePath, lines.join("\n"), "utf-8");
+
+  return filePath;
+}
+
+module.exports = { listReports, getReport, generateMarkdown, generateMarkdownForPeriod, closeReport };
