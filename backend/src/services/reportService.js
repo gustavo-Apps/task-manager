@@ -61,6 +61,74 @@ async function getReport(reportId, userId) {
 }
 
 /**
+ * @param {Object} tasksByDate  Mapa { 'YYYY-MM-DD': [{ task, isFirstDay }] }
+ * @param {string[]} sortedDates Datas ordenadas
+ * @returns {string[]}
+ */
+function buildDateSections(tasksByDate, sortedDates) {
+  const lines = [];
+
+  for (const date of sortedDates) {
+    lines.push(`### ${formatDatePtBR(date)}`);
+    lines.push("");
+
+    const entries = tasksByDate[date];
+
+    // ── Sem ticket: formato padrão ──────────────────────────────────────────────
+    const withoutTicket = entries.filter(({ task }) => !task.azure_ticket_id);
+    for (const { task, isFirstDay } of withoutTicket) {
+      const statusLabel = task.taskStatus?.name  || "—";
+      const typeLabel   = task.activityType?.name || "—";
+      const isMultiDay  = task.task_end_date && task.task_end_date !== task.task_date;
+
+      const displayTitle = isFirstDay || !isMultiDay
+        ? task.title
+        : `Continuando ${task.activityType?.name || "atividade"} do: ${task.title}`;
+
+      lines.push(`- **[${typeLabel}]** ${displayTitle} *(${statusLabel})*`);
+
+      if (isFirstDay) {
+        if (task.description)  lines.push(`  > ${task.description}`);
+        if (task.discord_link) lines.push(`  - Topico Discord: ${task.discord_link}`);
+        if (task.notes)        lines.push(`  - Observacoes: ${task.notes}`);
+      }
+
+      lines.push("");
+    }
+
+    // ── Com ticket: agrupa por tipo + título ───────────────────────────────────
+    // Apenas isFirstDay para não repetir em tasks multi-dia
+    const ticketEntries = entries.filter(({ task, isFirstDay }) => task.azure_ticket_id && isFirstDay);
+
+    // Agrupa: { 'Tipo||Titulo' => { typeLabel, title, tasks[] } }
+    const groups = new Map();
+    for (const { task } of ticketEntries) {
+      const typeLabel = task.activityType?.name || "—";
+      const key = `${typeLabel}||${task.title}`;
+      if (!groups.has(key)) groups.set(key, { typeLabel, title: task.title, tasks: [] });
+      groups.get(key).tasks.push(task);
+    }
+
+    for (const { typeLabel, title, tasks: groupTasks } of groups.values()) {
+      // Linha de cabeçalho do grupo — apenas tipo e título
+      lines.push(`- **[${typeLabel}]** ${title}`);
+
+      for (const task of groupTasks) {
+        const statusLabel = task.taskStatus?.name || "—";
+        const descSuffix  = task.description ? ` — ${task.description}` : "";
+        lines.push(`- Ticket Azure: \`${task.azure_ticket_id}\` - *(${statusLabel})*${descSuffix}`);
+        if (task.notes)        lines.push(`  > ${task.notes}`);
+        if (task.discord_link) lines.push(`  > Topico Discord: ${task.discord_link}`);
+      }
+
+      lines.push("");
+    }
+  }
+
+  return lines;
+}
+
+/**
  * Gera o arquivo Markdown de um relatório semanal e retorna o caminho do arquivo.
  *
  * Estrutura do Markdown gerado:
@@ -122,41 +190,7 @@ async function generateMarkdown(reportId, userId) {
     // Ordena as datas
     const sortedDates = Object.keys(tasksByDate).sort();
 
-    for (const date of sortedDates) {
-      lines.push(`### ${formatDatePtBR(date)}`);
-      lines.push("");
-
-      for (const { task, isFirstDay } of tasksByDate[date]) {
-        const statusLabel = task.taskStatus?.name || "—";
-        const typeLabel = task.activityType?.name || "—";
-        const isMultiDay = task.task_end_date && task.task_end_date !== task.task_date;
-
-        // Primeiro dia: título normal. Dias seguintes: "Continuando..."
-        const displayTitle = isFirstDay || !isMultiDay
-          ? task.title
-          : `Continuando ${task.activityType?.name || "atividade"} do: ${task.title}`;
-
-        lines.push(`- **[${typeLabel}]** ${displayTitle} *(${statusLabel})*`);
-
-        // Descrição e detalhes só no primeiro dia para não repetir
-        if (isFirstDay) {
-          if (task.description) {
-            lines.push(`  > ${task.description}`);
-          }
-          if (task.azure_ticket_id) {
-            lines.push(`  - Ticket Azure: \`${task.azure_ticket_id}\``);
-          }
-          if (task.discord_link) {
-            lines.push(`  - Topico Discord: ${task.discord_link}`);
-          }
-          if (task.notes) {
-            lines.push(`  - Observacoes: ${task.notes}`);
-          }
-        }
-
-        lines.push("");
-      }
-    }
+    lines.push(...buildDateSections(tasksByDate, sortedDates));
 
     // ─── Seção de Tickets Testados ────────────────────────────────────────────
     const ticketTasks = tasks.filter((t) => t.azure_ticket_id);
@@ -314,31 +348,7 @@ async function generateMarkdownForPeriod(userId, dataInicio, dataFim) {
 
     const sortedDates = Object.keys(tasksByDate).sort();
 
-    for (const date of sortedDates) {
-      lines.push(`### ${formatDatePtBR(date)}`);
-      lines.push("");
-
-      for (const { task, isFirstDay } of tasksByDate[date]) {
-        const statusLabel = task.taskStatus?.name  || "—";
-        const typeLabel   = task.activityType?.name || "—";
-        const isMultiDay  = task.task_end_date && task.task_end_date !== task.task_date;
-
-        const displayTitle = isFirstDay || !isMultiDay
-          ? task.title
-          : `Continuando ${task.activityType?.name || "atividade"} do: ${task.title}`;
-
-        lines.push(`- **[${typeLabel}]** ${displayTitle} *(${statusLabel})*`);
-
-        if (isFirstDay) {
-          if (task.description)     lines.push(`  > ${task.description}`);
-          if (task.azure_ticket_id) lines.push(`  - Ticket Azure: \`${task.azure_ticket_id}\``);
-          if (task.discord_link)    lines.push(`  - Topico Discord: ${task.discord_link}`);
-          if (task.notes)           lines.push(`  - Observacoes: ${task.notes}`);
-        }
-
-        lines.push("");
-      }
-    }
+    lines.push(...buildDateSections(tasksByDate, sortedDates));
 
     // ─── Tickets testados ─────────────────────────────────────────────────────
     const ticketTasks = tasks.filter((t) => t.azure_ticket_id);

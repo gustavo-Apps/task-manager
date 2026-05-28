@@ -95,7 +95,7 @@ export default function TicketsPage() {
       <h1 className="text-lg font-semibold text-gray-100 mb-6">Tickets Testados</h1>
 
       {/* Filtros */}
-      <div className="bg-gray-900 border border-gray-800 rounded-lg px-4 py-4 mb-6 flex flex-wrap items-end gap-4">
+      <div className="bg-gray-900 border border-gray-500 rounded-lg px-4 py-4 mb-6 flex flex-wrap items-end gap-4">
 
         {/* Presets */}
         <div>
@@ -152,7 +152,7 @@ export default function TicketsPage() {
 
         {/* Contador */}
         {searched && !loading && (
-          <span className="text-xs text-gray-500 ml-auto self-end">
+          <span className="text-xs text-gray-300 ml-auto self-end">
             {tickets.length} ticket(s) encontrado(s)
           </span>
         )}
@@ -170,10 +170,10 @@ export default function TicketsPage() {
       )}
 
       {!loading && tickets.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+        <div className="bg-gray-900 border border-gray-500 rounded-lg overflow-hidden">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-gray-800 text-gray-400 text-left">
+              <tr className="border-b border-gray-500 text-gray-400 text-left">
                 <th className="px-4 py-3 font-medium">Ticket</th>
                 <th className="px-4 py-3 font-medium">Titulo</th>
                 <th className="px-4 py-3 font-medium">Data</th>
@@ -181,13 +181,14 @@ export default function TicketsPage() {
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Semana</th>
                 <th className="px-4 py-3 font-medium">Discord</th>
+                <th className="px-4 py-3 font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
               {tickets.map((ticket, idx) => (
                 <tr
                   key={ticket.id}
-                  className={`border-b border-gray-800 last:border-0 transition-colors hover:bg-gray-800/50 ${
+                  className={`border-b border-gray-700 last:border-0 transition-colors hover:bg-gray-800/50 ${
                     idx % 2 === 0 ? "" : "bg-gray-900/50"
                   }`}
                 >
@@ -235,6 +236,14 @@ export default function TicketsPage() {
                       )
                       : <span className="text-gray-600">—</span>
                     }
+                  </td>
+                  <td className="px-4 py-3">
+                    <a
+                      href={`/tasks/${ticket.id}/edit`}
+                      className="text-blue-500 hover:text-blue-400 transition-colors"
+                    >
+                      Detalhes
+                    </a>
                   </td>
                 </tr>
               ))}

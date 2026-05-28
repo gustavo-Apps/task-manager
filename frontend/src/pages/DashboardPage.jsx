@@ -6,17 +6,28 @@
  */
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
 import toast from "react-hot-toast";
 import Badge from "../components/Badge";
 import { useLookups } from "../hooks/useLookups";
 
 export default function DashboardPage() {
-  const [report, setReport]             = useState(null);
-  const [loading, setLoading]           = useState(true);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [search, setSearch]             = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Filtros persistidos na URL
+  const statusFilter = searchParams.get("status") || "";
+  const search       = searchParams.get("q")      || "";
+
+  function setStatusFilter(value) {
+    setSearchParams((p) => { value ? p.set("status", value) : p.delete("status"); return p; }, { replace: true });
+  }
+  function setSearch(value) {
+    setSearchParams((p) => { value ? p.set("q", value) : p.delete("q"); return p; }, { replace: true });
+  }
+
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const { taskStatuses } = useLookups();
 

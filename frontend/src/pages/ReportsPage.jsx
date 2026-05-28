@@ -4,8 +4,8 @@
  * Lista todas as semanas com contagem de tarefas e opções de visualização/download.
  */
 
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
 import toast from "react-hot-toast";
 
@@ -18,11 +18,34 @@ const PRESETS = [
 
 
 export default function ReportsPage() {
-  const [preset, setPreset]   = useState("current");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Preset e range vem da URL — persiste ao navegar para task e voltar
+  const preset = searchParams.get("preset") || "current";
+  const range  = {
+    from: searchParams.get("from") || "",
+    to:   searchParams.get("to")   || "",
+  };
+
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState({ from: "", to: "" });
   const [downloading, setDownloading] = useState(false);
+
+  // Ref para distinguir mount (URL ja pode ter datas) de clique no preset
+  const isFirstRender = useRef(true);
+
+  function applyPreset(value) {
+    setSearchParams((p) => { p.set("preset", value); return p; }, { replace: true });
+  }
+
+  function updateRange(partial) {
+    setSearchParams((p) => {
+      if (partial.from !== undefined) p.set("from", partial.from);
+      if (partial.to   !== undefined) p.set("to",   partial.to);
+      p.set("preset", "custom");
+      return p;
+    }, { replace: true });
+  }
 
   useEffect(() => {
     api.get("/reports")
@@ -31,16 +54,20 @@ export default function ReportsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Quando um preset e selecionado, calcula e preenche o range automaticamente
+  // Calcula e grava as datas na URL quando o preset muda
   useEffect(() => {
     if (preset === "custom") return;
 
-    const today = new Date();
-    const mondayOffset = (today.getDay() + 6) % 7; // dias ate a segunda da semana atual
-
-    function toISO(d) {
-      return d.toISOString().slice(0, 10);
+    // No primeiro render: se a URL ja tem datas, respeita — nao recalcula
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      if (range.from && range.to) return;
     }
+
+    const today       = new Date();
+    const mondayOffset = (today.getDay() + 6) % 7;
+
+    function toISO(d) { return d.toISOString().slice(0, 10); }
 
     function getWeekRange(weeksBack) {
       const monday = new Date(today);
@@ -51,9 +78,20 @@ export default function ReportsPage() {
       return { from: toISO(monday), to: toISO(sunday) };
     }
 
-    if (preset === "current") setRange(getWeekRange(0));
-    if (preset === "last")    setRange(getWeekRange(1));
-    if (preset === "before")  setRange(getWeekRange(2));
+    const computed =
+      preset === "current" ? getWeekRange(0) :
+      preset === "last"    ? getWeekRange(1) :
+      preset === "before"  ? getWeekRange(2) : null;
+
+    if (!computed) return;
+
+    setSearchParams((p) => {
+      p.set("from",   computed.from);
+      p.set("to",     computed.to);
+      p.set("preset", preset);
+      return p;
+    }, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset]);
 
   async function handleDownload(report) {
@@ -115,7 +153,7 @@ export default function ReportsPage() {
             {PRESETS.map((p) => (
               <button
                 key={p.value}
-                onClick={() => { setPreset(p.value); console.log(p.value); }}
+                onClick={() => applyPreset(p.value)}
                 className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                   preset === p.value
                     ? "bg-blue-600 text-white"
@@ -133,7 +171,7 @@ export default function ReportsPage() {
           <input
             type="date"
             value={range.from}
-            onChange={(e) => { setPreset("custom"); setRange((r) => ({ ...r, from: e.target.value })); }}
+            onChange={(e) => updateRange({ from: e.target.value })}
             className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded px-2 py-2 focus:outline-none focus:border-gray-500"
           />
         </div>
@@ -142,7 +180,7 @@ export default function ReportsPage() {
           <input
             type="date"
             value={range.to}
-            onChange={(e) => { setPreset("custom"); setRange((r) => ({ ...r, to: e.target.value })); }}
+            onChange={(e) => updateRange({ to: e.target.value })}
             className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded px-2 py-2 focus:outline-none focus:border-gray-500"
           />
         </div>
