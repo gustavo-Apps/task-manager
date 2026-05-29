@@ -20,10 +20,10 @@ async function start() {
 
     // Em desenvolvimento, sincroniza o schema automaticamente.
     // Em produção, use migrations no lugar de sync().
-    if (process.env.NODE_ENV !== "production") {
-      await sequelize.sync({ alter: true });
-      console.log("Schema sincronizado.");
-    }
+    // if (process.env.NODE_ENV !== "production") {
+    //   await sequelize.sync({ alter: true });
+    //   console.log("Schema sincronizado.");
+    // }
 
     app.listen(PORT, () => {
       console.log(`Servidor rodando em http://localhost:${PORT}`);

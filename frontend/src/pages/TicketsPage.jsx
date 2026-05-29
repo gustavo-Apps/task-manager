@@ -196,7 +196,18 @@ export default function TicketsPage() {
                     #{ticket.azure_ticket_id}
                   </td>
                   <td className="px-4 py-3 text-gray-200 max-w-xs">
-                    <span className="line-clamp-1">{ticket.title}</span>
+                    {ticket.azure_ticket_id ? (
+                      <a
+                        href={`https://dev.azure.com/appelsoft/Time%20Desktop%20-%20Desenvolvimento/_workitems/edit/${ticket.azure_ticket_id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="line-clamp-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+                      >
+                        {ticket.title}
+                      </a>
+                    ) : (
+                      <span className="line-clamp-1">{ticket.title}</span>
+                    )}
                     {ticket.description && (
                       <span className="block text-gray-500 line-clamp-1 mt-0.5">{ticket.description}</span>
                     )}
