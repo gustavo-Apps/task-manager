@@ -18,7 +18,7 @@ const app = express();
 // Helmet adiciona headers HTTP de segurança (CSP, HSTS, etc.)
 app.use(helmet());
 
-// CORS — em produção, substitua "*" pela URL do seu frontend
+// CORS - em produção, substitua "*" pela URL do seu frontend
 app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
 
 // Parseia o corpo das requisições como JSON
@@ -37,10 +37,21 @@ app.use("/api/auth", authLimiter);
 // Rotas
 app.use("/api", routes);
 
-// Rota de health check — útil para monitoramento
+// Rota de health check - útil para monitoramento
 app.get("/health", (_req, res) => res.json({ ok: true, uptime: process.uptime() }));
 
-// Middleware de erro — deve ser o último a ser registrado
+// Em produção, serve o build do frontend (React)
+if (process.env.NODE_ENV === "production") {
+  const path = require("path");
+  const frontendDist = path.join(__dirname, "../../frontend/dist");
+  app.use(express.static(frontendDist));
+  // SPA fallback: qualquer rota desconhecida retorna o index.html
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(frontendDist, "index.html"));
+  });
+}
+
+// Middleware de erro - deve ser o último a ser registrado
 app.use(errorHandler);
 
 module.exports = app;

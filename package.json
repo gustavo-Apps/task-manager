@@ -1,12 +1,15 @@
 {
   "name": "weekly-reports",
   "version": "1.0.0",
-  "description": "Weekly Reports — runner raiz (back + front)",
+  "description": "Weekly Reports - QA Activity Tracker",
+  "main": "backend/server.js",
   "scripts": {
-    "dev": "concurrently --kill-others --prefix-colors bgBlue,bgCyan --names \"BACK,FRONT\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "start": "concurrently --kill-others --prefix-colors bgBlue,bgCyan --names \"BACK,FRONT\" \"npm run start --prefix backend\" \"npm run dev --prefix frontend\""
+    "build": "npm install --prefix frontend && npm run build --prefix frontend",
+    "start": "node backend/server.js",
+    "dev:api": "npm run dev --prefix backend",
+    "dev:web": "npm run dev --prefix frontend"
   },
-  "devDependencies": {
-    "concurrently": "^9.2.1"
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

@@ -9,6 +9,7 @@
  */
 const UserCargos = require("./Cargos");
 const User = require("./User");
+const Setting = require("./Setting");
 const ActivityType = require("./ActivityType");
 const TaskStatus = require("./TaskStatus");
 const WeeklyReport = require("./WeeklyReport");
@@ -34,4 +35,4 @@ Task.belongsTo(ActivityType, { foreignKey: "activity_type_id", as: "activityType
 TaskStatus.hasMany(Task, { foreignKey: "task_status_id", as: "tasks" });
 Task.belongsTo(TaskStatus, { foreignKey: "task_status_id", as: "taskStatus" });
 
-module.exports = { User, ActivityType, TaskStatus, WeeklyReport, Task, UserCargos };
+module.exports = { User, ActivityType, TaskStatus, WeeklyReport, Task, UserCargos, Setting };

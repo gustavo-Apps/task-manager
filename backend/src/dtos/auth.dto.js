@@ -18,11 +18,11 @@ const registerSchema = Joi.object({
       "string.min": "username deve ter pelo menos 3 caracteres",
     }),
 
-  email: Joi.string().email().max(150).required(),
+  email: Joi.string().email({ tlds: { allow: false } }).max(150).required(),
 
   password: Joi.string()
     .min(3)
-    .max(72) // bcrypt limita a 72 chars
+    .max(72)
     .required()
     .messages({
       "string.min": "Senha deve ter pelo menos 3 caracteres",
@@ -30,7 +30,7 @@ const registerSchema = Joi.object({
 });
 
 const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
+  email: Joi.string().email({ tlds: { allow: false } }).required(),
   password: Joi.string().required(),
 });
 

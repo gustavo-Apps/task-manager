@@ -7,12 +7,27 @@
 const path = require("path");
 const reportService = require("../services/reportService");
 const { success } = require("../utils/response");
+const AppError = require("../utils/AppError");
 
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 const list = asyncHandler(async (req, res) => {
   const reports = await reportService.listReports(req.user.id);
   return success(res, { reports });
+});
+
+const getCurrent = asyncHandler(async (req, res) => {
+  const { report, created } = await reportService.getCurrentReport(req.user.id);
+  return success(res, { report, created });
+});
+
+const getForDate = asyncHandler(async (req, res) => {
+  const { date } = req.query;
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new AppError("Par\u00e2metro date inv\u00e1lido. Use o formato YYYY-MM-DD.", 400);
+  }
+  const { report, created } = await reportService.getReportForDate(req.user.id, date);
+  return success(res, { report, created });
 });
 
 const getOne = asyncHandler(async (req, res) => {
@@ -54,4 +69,4 @@ const downloadMarkdownForPeriod = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { list, getOne, downloadMarkdown, downloadMarkdownForPeriod, close };
+module.exports = { list, getCurrent, getForDate, getOne, downloadMarkdown, downloadMarkdownForPeriod, close };

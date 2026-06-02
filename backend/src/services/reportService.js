@@ -8,7 +8,7 @@ const path = require("path");
 const fs = require("fs");
 const { Op } = require("sequelize");
 const { WeeklyReport, Task, ActivityType, TaskStatus, User } = require("../models");
-const { formatDatePtBR } = require("../utils/isoWeek");
+const { getISOWeek, getWeekBounds, formatDatePtBR } = require("../utils/isoWeek");
 const AppError = require("../utils/AppError");
 
 /**
@@ -402,4 +402,61 @@ async function generateMarkdownForPeriod(userId, dataInicio, dataFim) {
   return filePath;
 }
 
-module.exports = { listReports, getReport, generateMarkdown, generateMarkdownForPeriod, closeReport };
+/**
+ * Retorna (ou cria) o relatório da semana ISO atual.
+ *
+ * @param {number} userId
+ * @returns {Promise<{ report: WeeklyReport, created: boolean }>}
+ */
+async function getCurrentReport(userId) {
+  const { weekNumber, year } = getISOWeek(new Date());
+  const { startDate, endDate } = getWeekBounds(weekNumber, year);
+
+  const [report, created] = await WeeklyReport.findOrCreate({
+    where: { user_id: userId, week_number: weekNumber, year },
+    defaults: {
+      user_id: userId,
+      week_number: weekNumber,
+      year,
+      start_date: startDate,
+      end_date: endDate,
+      status: "open",
+    },
+  });
+
+  const full = await getReport(report.id, userId);
+  return { report: full, created };
+}
+
+/**
+ * Retorna o relatório para uma data específica.
+ * - Semana atual: findOrCreate (garante que existe)
+ * - Semanas passadas/futuras: findOne apenas (não cria relatório vazio)
+ *
+ * @param {number} userId
+ * @param {string} date  Formato YYYY-MM-DD
+ * @returns {Promise<{ report: WeeklyReport|null, created: boolean }>}
+ */
+async function getReportForDate(userId, date) {
+  const targetDate  = new Date(date + "T12:00:00Z");
+  const { weekNumber, year } = getISOWeek(targetDate);
+
+  const { weekNumber: currentWeek, year: currentYear } = getISOWeek(new Date());
+  const isCurrentWeek = weekNumber === currentWeek && year === currentYear;
+
+  if (isCurrentWeek) {
+    return getCurrentReport(userId);
+  }
+
+  // Semana diferente: apenas leitura, sem criar relatório
+  const report = await WeeklyReport.findOne({
+    where: { user_id: userId, week_number: weekNumber, year },
+  });
+
+  if (!report) return { report: null, created: false };
+
+  const full = await getReport(report.id, userId);
+  return { report: full, created: false };
+}
+
+module.exports = { listReports, getReport, getCurrentReport, getReportForDate, generateMarkdown, generateMarkdownForPeriod, closeReport };

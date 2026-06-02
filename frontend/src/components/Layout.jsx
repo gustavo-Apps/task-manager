@@ -8,9 +8,10 @@ import { useAuth } from "../contexts/AuthContext";
 import toast from "react-hot-toast";
 
 const NAV_ITEMS = [
-  { to: "/",        label: "Dashboard"  },
-  { to: "/tickets", label: "Tickets"    },
-  { to: "/reports", label: "Relatorios" },
+  { to: "/",         label: "Dashboard"    },
+  { to: "/tickets",  label: "Tickets"      },
+  { to: "/reports",  label: "Relatorios"   },
+  { to: "/settings", label: "Configuracoes" },
 ];
 
 export default function Layout({ children }) {

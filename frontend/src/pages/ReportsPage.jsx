@@ -30,6 +30,7 @@ export default function ReportsPage() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [sendingClickUp, setSendingClickUp] = useState(null); // reportId sendo enviado
 
   // Ref para distinguir mount (URL ja pode ter datas) de clique no preset
   const isFirstRender = useRef(true);
@@ -94,6 +95,40 @@ export default function ReportsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset]);
 
+  async function handleSendClickUp(report) {
+    try {
+      setSendingClickUp(report.id);
+
+      // Verifica se ja existe Doc vinculado
+      const statusRes = await api.get(`/clickup/reports/${report.id}`);
+      const { exists, docUrl } = statusRes.data.data;
+
+      let overwrite = false;
+      if (exists) {
+        const confirmed = window.confirm(
+          `Este relatorio ja foi enviado ao ClickUp anteriormente.\n\nDeseja sobrescrever o Doc existente?`
+        );
+        if (!confirmed) {
+          setSendingClickUp(null);
+          return;
+        }
+        overwrite = true;
+      }
+
+      const res = await api.post(`/clickup/reports/${report.id}`, { overwrite });
+      const { doc, message } = res.data.data;
+      toast.success(message);
+      if (doc.docUrl) {
+        window.open(doc.docUrl, "_blank", "noopener");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || "Erro ao enviar para o ClickUp.";
+      toast.error(msg);
+    } finally {
+      setSendingClickUp(null);
+    }
+  }
+
   async function handleDownload(report) {
     try {
       const res = await api.get(`/reports/${report.id}/markdown`, { responseType: "blob" });
@@ -148,7 +183,7 @@ export default function ReportsPage() {
       <div className="bg-gray-900 border border-gray-500 rounded-lg px-4 py-3 mb-6 flex flex-wrap items-end gap-3">
       {/* Presets */}
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Periodo</label>
+          <label className="block text-xs text-gray-400 mb-1">Relatorio por Semana/Periodo</label>
           <div className="flex gap-1">
             {PRESETS.map((p) => (
               <button
@@ -241,6 +276,13 @@ export default function ReportsPage() {
                   className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
                 >
                   .md
+                </button>
+                <button
+                  onClick={() => handleSendClickUp(report)}
+                  disabled={sendingClickUp === report.id}
+                  className="text-xs bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-white rounded px-2 py-1 transition-colors"
+                >
+                  {sendingClickUp === report.id ? "Enviando..." : "ClickUp"}
                 </button>
               </div>
             </div>

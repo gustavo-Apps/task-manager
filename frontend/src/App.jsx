@@ -11,6 +11,7 @@ import TaskFormPage     from "./pages/TaskFormPage";
 import ReportsPage      from "./pages/ReportsPage";
 import ReportDetailPage from "./pages/ReportDetailPage";
 import TicketsPage      from "./pages/TicketsPage";
+import SettingsPage     from "./pages/SettingsPage";
 
 export default function App() {
   return (
@@ -86,6 +87,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <Layout><TicketsPage /></Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <PrivateRoute>
+                <Layout><SettingsPage /></Layout>
               </PrivateRoute>
             }
           />

@@ -11,5 +11,7 @@ router.use("/auth", require("./auth.routes"));
 router.use("/tasks", require("./task.routes"));
 router.use("/reports", require("./report.routes"));
 router.use("/lookups", require("./lookup.routes"));
+router.use("/settings", require("./settings.routes"));
+router.use("/clickup", require("./clickup.routes"));
 
 module.exports = router;

@@ -15,6 +15,8 @@ const reportController = require("../controllers/reportController");
 router.use(authenticate);
 
 router.get("/", reportController.list);
+router.get("/current", reportController.getCurrent);
+router.get("/for-date", reportController.getForDate);
 router.get("/period", reportController.downloadMarkdownForPeriod);
 router.get("/:id", reportController.getOne);
 router.get("/:id/markdown", reportController.downloadMarkdown);

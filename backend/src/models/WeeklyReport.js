@@ -56,6 +56,15 @@ WeeklyReport.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    // Integracao ClickUp: armazena o Doc criado para permitir atualizacao posterior
+    clickup_doc_id: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    clickup_doc_url: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
   },
   {
     sequelize,
