@@ -1,28 +1,31 @@
 /**
  * Conexão com o banco de dados via Sequelize.
  *
- * Centraliza a instância do Sequelize para ser importada
- * pelos models e pelo server.js.
+ * Aceita as variáveis padrão (DB_*) ou as variáveis injetadas
+ * automaticamente pelo plugin MySQL do Railway (MYSQL*).
  */
 
 const { Sequelize } = require("sequelize");
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASS,
-  {
-    host: process.env.DB_HOST || "localhost",
-    port: process.env.DB_PORT || 3306,
-    dialect: "mysql",
-    logging: process.env.NODE_ENV === "development" ? console.log : false,
-    pool: {
-      max: 10,     // máximo de conexões simultâneas
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
-    },
-  }
-);
+// Railway injeta MYSQLHOST, MYSQLPORT, MYSQLDATABASE, MYSQLUSER, MYSQLPASSWORD
+// Fallback para DB_* usados no desenvolvimento local
+const dbName = process.env.DB_NAME     || process.env.MYSQLDATABASE || "weekly_reports";
+const dbUser = process.env.DB_USER     || process.env.MYSQLUSER     || "root";
+const dbPass = process.env.DB_PASS     || process.env.MYSQLPASSWORD || "";
+const dbHost = process.env.DB_HOST     || process.env.MYSQLHOST     || "localhost";
+const dbPort = process.env.DB_PORT     || process.env.MYSQLPORT     || 3306;
+
+const sequelize = new Sequelize(dbName, dbUser, dbPass, {
+  host: dbHost,
+  port: Number(dbPort),
+  dialect: "mysql",
+  logging: process.env.NODE_ENV === "development" ? console.log : false,
+  pool: {
+    max: 10,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
+  },
+});
 
 module.exports = { sequelize };

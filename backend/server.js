@@ -19,16 +19,13 @@ async function start() {
     await sequelize.authenticate();
     console.log("Banco de dados conectado com sucesso.");
 
+    // Sincroniza o schema do banco (alter: true ajusta sem perder dados)
+    await sequelize.sync({ alter: true });
+    console.log("Schema sincronizado.");
+
     // Inicializa configuracoes padrao (ClickUp, etc.) se ainda nao existirem
     await settingsService.initDefaults();
     console.log("Configuracoes inicializadas.");
-
-    // Em desenvolvimento, sincroniza o schema automaticamente.
-    // Em produção, use migrations no lugar de sync().
-    // if (process.env.NODE_ENV !== "production") {
-    //   await sequelize.sync({ alter: true });
-    //   console.log("Schema sincronizado.");
-    // }
 
     app.listen(PORT, () => {
       console.log(`Servidor rodando em http://localhost:${PORT}`);
