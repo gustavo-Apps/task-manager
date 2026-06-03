@@ -115,12 +115,6 @@ const SETTING_DEFAULTS = [
 
 /**
  * Garante que os registros padrao existem para um usuario especifico.
- * Chamado no primeiro acesso ou login.
- *
- * @param {number} userId
- */
-/**
- * Garante que os registros padrao existem para um usuario especifico.
  * Para chaves de .md, usa os defaults do cargo do usuario.
  *
  * @param {number} userId

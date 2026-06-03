@@ -26,7 +26,7 @@ function authenticate(req, _res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Token: ", token);
+    console.log("[Auth] Token verificado para userId:", payload.sub);
     // payload.sub deve ser o ID numérico do usuário (definido no authService.login)
     if (!payload.sub) {
       return next(new AppError("Token inválido: identificador de usuário ausente.", 401));
@@ -38,6 +38,7 @@ function authenticate(req, _res, next) {
       username: payload.username,
       email: payload.email,
       role: payload.role,
+      cargo: payload.cargo ?? null,
     };
 
     // Grava o userId no contexto CLS para que os hooks de auditoria

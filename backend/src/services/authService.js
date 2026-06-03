@@ -67,6 +67,7 @@ async function login({ email, password }) {
       username: user.username,
       email: user.email,
       role: user.role,
+      cargo: user.cargo,
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
