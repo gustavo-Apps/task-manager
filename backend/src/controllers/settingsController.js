@@ -1,8 +1,8 @@
 /**
  * Controller: Settings
  *
- * GET  /api/settings       - lista todas as configuracoes (valores mascarados)
- * PUT  /api/settings       - atualiza um ou mais pares chave/valor
+ * GET  /api/settings  - lista configuracoes do usuario logado (valores mascarados)
+ * PUT  /api/settings  - atualiza configuracoes do usuario logado
  */
 
 const settingsService = require("../services/settingsService");
@@ -13,7 +13,7 @@ const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
 const getAll = asyncHandler(async (req, res) => {
-  const settings = await settingsService.getAll(true); // mascarado para exibicao
+  const settings = await settingsService.getAll(req.user.id, true);
   return success(res, { settings });
 });
 
@@ -24,9 +24,9 @@ const update = asyncHandler(async (req, res) => {
     throw new AppError("Body invalido. Envie um objeto { chave: valor }.", 400);
   }
 
-  await settingsService.setValues(updates);
+  await settingsService.setValues(req.user.id, updates);
 
-  const settings = await settingsService.getAll(true);
+  const settings = await settingsService.getAll(req.user.id, true);
   return success(res, { settings, message: "Configuracoes salvas com sucesso." });
 });
 

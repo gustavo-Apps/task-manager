@@ -9,7 +9,6 @@ require("dotenv").config();
 
 const app = require("./src/app");
 const { sequelize } = require("./src/config/database");
-const settingsService = require("./src/services/settingsService");
 
 const PORT = process.env.PORT || 3000;
 
@@ -22,10 +21,6 @@ async function start() {
     // Sincroniza o schema do banco (alter: true ajusta sem perder dados)
     await sequelize.sync({ alter: false });
     console.log("Schema sincronizado.");
-
-    // Inicializa configuracoes padrao (ClickUp, etc.) se ainda nao existirem
-    await settingsService.initDefaults();
-    console.log("Configuracoes inicializadas.");
 
     app.listen(PORT, () => {
       console.log(`Servidor rodando em http://localhost:${PORT}`);

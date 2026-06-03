@@ -14,7 +14,7 @@ const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
 const checkStatus = asyncHandler(async (req, res) => {
-  await clickupService.getClickUpConfig();
+  await clickupService.getClickUpConfig(req.user.id);
   return success(res, { configured: true, message: "ClickUp configurado corretamente." });
 });
 

@@ -18,11 +18,16 @@ Setting.init(
       primaryKey: true,
       autoIncrement: true,
     },
-    // Chave unica da configuracao (ex: "clickup_api_token", "clickup_list_id")
+    // Usuario dono desta configuracao
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: { model: "users", key: "id" },
+    },
+    // Chave da configuracao (ex: "clickup_api_token") — unica por usuario
     key: {
       type: DataTypes.STRING(100),
       allowNull: false,
-      unique: true,
     },
     // Valor da configuracao (texto livre)
     value: {

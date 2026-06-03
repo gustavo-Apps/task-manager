@@ -16,12 +16,14 @@ const AppError = require("../utils/AppError");
 const CLICKUP_V3 = "https://api.clickup.com/api/v3";
 
 /**
- * Busca e valida as configuracoes necessarias para o ClickUp.
+ * Busca e valida as configuracoes necessarias para o ClickUp de um usuario.
+ *
+ * @param {number} userId
  */
-async function getClickUpConfig() {
+async function getClickUpConfig(userId) {
   const [token, workspaceId] = await Promise.all([
-    settingsService.getValue("clickup_api_token"),
-    settingsService.getValue("clickup_workspace_id"),
+    settingsService.getValue(userId, "clickup_api_token"),
+    settingsService.getValue(userId, "clickup_workspace_id"),
   ]);
 
   if (!token)       throw new AppError("ClickUp API Token nao configurado. Configure em Configuracoes.", 422);
@@ -58,7 +60,7 @@ async function getReportClickUpStatus(reportId, userId) {
  * @returns {Promise<{ docId: string, docUrl: string, docName: string, updated: boolean }>}
  */
 async function sendReportToClickUp(reportId, userId, overwrite = false) {
-  const { token, workspaceId } = await getClickUpConfig();
+  const { token, workspaceId } = await getClickUpConfig(userId);
 
   const report = await reportService.getReport(reportId, userId);
   const markdown = buildMarkdown(report);
