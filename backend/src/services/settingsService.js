@@ -8,8 +8,60 @@
 const { Setting } = require("../models");
 const AppError = require("../utils/AppError");
 
-// Chaves conhecidas com defaults e descricoes
-const SETTING_DEFAULTS = [
+// Defaults de personalização do .md por cargo (user_cargos.id)
+// Fallback: cargo desconhecido usa os valores de 'default'
+const MD_DEFAULTS_BY_CARGO = {
+  // Analista de Testes (id=2)
+  2: {
+    md_verb:                  "Testado",
+    md_ticket_section_title:  "Tickets Testados",
+    md_activity_section_title:"Atividades de Teste Realizadas",
+    md_report_title:          "Relatório Semanal — QA",
+    md_footer:                "",
+  },
+  // Desenvolvedor (id=1)
+  1: {
+    md_verb:                  "Desenvolvido",
+    md_ticket_section_title:  "Tickets Desenvolvidos",
+    md_activity_section_title:"Atividades de Desenvolvimento",
+    md_report_title:          "Relatório Semanal — Dev",
+    md_footer:                "",
+  },
+  // Gerente de Projeto (id=3)
+  3: {
+    md_verb:                  "Acompanhado",
+    md_ticket_section_title:  "Tickets Acompanhados",
+    md_activity_section_title:"Atividades de Gestão",
+    md_report_title:          "Relatório Semanal — Gestão",
+    md_footer:                "",
+  },
+  // Analista de Requisitos (id=4)
+  4: {
+    md_verb:                  "Detalhado",
+    md_ticket_section_title:  "Tickets Detalhados",
+    md_activity_section_title:"Atividades de Requisitos",
+    md_report_title:          "Relatório Semanal — Requisitos",
+    md_footer:                "",
+  },
+  // Engenheiro de DevOps (id=5)
+  5: {
+    md_verb:                  "Configurado",
+    md_ticket_section_title:  "Tickets Configurados",
+    md_activity_section_title:"Atividades de DevOps",
+    md_report_title:          "Relatório Semanal — DevOps",
+    md_footer:                "",
+  },
+  default: {
+    md_verb:                  "Realizado",
+    md_ticket_section_title:  "Tickets Trabalhados",
+    md_activity_section_title:"Atividades Realizadas",
+    md_report_title:          "Relatório Semanal",
+    md_footer:                "",
+  },
+};
+
+// Chaves conhecidas com defaults fixos (independentes de cargo)
+const SETTING_DEFAULTS_FIXED = [
   {
     key: "clickup_api_token",
     value: "",
@@ -27,17 +79,73 @@ const SETTING_DEFAULTS = [
   },
 ];
 
+// Chaves de personalizacao do .md (defaults dependem do cargo)
+const SETTING_DEFAULTS_MD = [
+  {
+    key: "md_verb",
+    description: "Verbo usado para descrever o que foi feito (ex: Testado, Desenvolvido)",
+  },
+  {
+    key: "md_report_title",
+    description: "Titulo do relatorio no cabecalho do .md",
+  },
+  {
+    key: "md_activity_section_title",
+    description: "Titulo da secao de atividades no .md",
+  },
+  {
+    key: "md_ticket_section_title",
+    description: "Titulo da secao de tickets no .md",
+  },
+  {
+    key: "md_footer",
+    description: "Texto de rodape personalizado no .md (opcional)",
+  },
+  {
+    key: "md_header_extra",
+    description: "Texto adicional exibido no cabecalho do relatorio (ex: equipe, observacao geral)",
+  },
+];
+
+// Lista completa para validacao de chaves permitidas
+const SETTING_DEFAULTS = [
+  ...SETTING_DEFAULTS_FIXED,
+  ...SETTING_DEFAULTS_MD,
+];
+
 /**
  * Garante que os registros padrao existem para um usuario especifico.
  * Chamado no primeiro acesso ou login.
  *
  * @param {number} userId
  */
-async function initDefaultsForUser(userId) {
-  for (const def of SETTING_DEFAULTS) {
+/**
+ * Garante que os registros padrao existem para um usuario especifico.
+ * Para chaves de .md, usa os defaults do cargo do usuario.
+ *
+ * @param {number} userId
+ * @param {number|null} cargoId - ID do cargo (user_cargos.id); se null, usa 'default'
+ */
+async function initDefaultsForUser(userId, cargoId = null) {
+  // Chaves fixas (ClickUp etc.)
+  for (const def of SETTING_DEFAULTS_FIXED) {
     await Setting.findOrCreate({
       where: { user_id: userId, key: def.key },
-      defaults: { user_id: userId, key: def.key, value: def.value, description: def.description },
+      defaults: { user_id: userId, key: def.key, value: def.value ?? "", description: def.description },
+    });
+  }
+
+  // Chaves do .md — valor default vem do cargo
+  const mdDefaults = MD_DEFAULTS_BY_CARGO[cargoId] ?? MD_DEFAULTS_BY_CARGO.default;
+  for (const def of SETTING_DEFAULTS_MD) {
+    await Setting.findOrCreate({
+      where: { user_id: userId, key: def.key },
+      defaults: {
+        user_id: userId,
+        key: def.key,
+        value: mdDefaults[def.key] ?? "",
+        description: def.description,
+      },
     });
   }
 }
@@ -49,9 +157,6 @@ async function initDefaultsForUser(userId) {
  * @param {boolean} masked - Se true, mascara tokens sensiveis
  */
 async function getAll(userId, masked = false) {
-  // Garante que os defaults existem para este usuario
-  await initDefaultsForUser(userId);
-
   const settings = await Setting.findAll({
     where: { user_id: userId },
     order: [["key", "ASC"]],

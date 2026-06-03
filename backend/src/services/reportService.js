@@ -10,6 +10,38 @@ const { Op } = require("sequelize");
 const { WeeklyReport, Task, ActivityType, TaskStatus, User } = require("../models");
 const { getISOWeek, getWeekBounds, formatDatePtBR } = require("../utils/isoWeek");
 const AppError = require("../utils/AppError");
+const settingsService = require("./settingsService");
+
+/**
+ * Interpola variaveis {{variavel}} nos campos de preferencia do .md.
+ * Substitui pelos valores reais do contexto do relatorio.
+ */
+function interpolate(text, ctx) {
+  if (!text) return text;
+  return text.replace(/\{\{(\w+)\}\}/g, (_, key) =>
+    ctx[key] !== undefined ? ctx[key] : `{{${key}}}`
+  );
+}
+
+/**
+ * Carrega as preferencias de .md do usuario como objeto.
+ * Valores vazios caem no fallback padrao.
+ */
+async function getMdPrefs(userId) {
+  const keys = ["md_verb", "md_report_title", "md_activity_section_title", "md_ticket_section_title", "md_footer", "md_header_extra"];
+  const result = {};
+  for (const key of keys) {
+    result[key] = (await settingsService.getValue(userId, key)) || null;
+  }
+  return {
+    verb:            result.md_verb                  || "Realizado",
+    reportTitle:     result.md_report_title           || "Relatório Semanal",
+    activitySection: result.md_activity_section_title || "Atividades Realizadas",
+    ticketSection:   result.md_ticket_section_title   || "Tickets Trabalhados",
+    footer:          result.md_footer                 || "",
+    headerExtra:     result.md_header_extra           || "",
+  };
+}
 
 /**
  * Lista todos os relatórios semanais de um usuário, do mais recente para o mais antigo.
@@ -65,7 +97,7 @@ async function getReport(reportId, userId) {
  * @param {string[]} sortedDates Datas ordenadas
  * @returns {string[]}
  */
-function buildDateSections(tasksByDate, sortedDates) {
+function buildDateSections(tasksByDate, sortedDates, verb = "Realizado") {
   const lines = [];
 
   for (const date of sortedDates) {
@@ -84,7 +116,6 @@ function buildDateSections(tasksByDate, sortedDates) {
       const displayTitle = isFirstDay || !isMultiDay
         ? task.title
         : `Continuando ${task.activityType?.name || "atividade"} do: ${task.title}`;
-
       lines.push(`- **[${typeLabel}]** ${displayTitle} *(${statusLabel})*`);
 
       if (isFirstDay) {
@@ -144,16 +175,41 @@ function buildDateSections(tasksByDate, sortedDates) {
 async function generateMarkdown(reportId, userId) {
   const report = await getReport(reportId, userId);
   const { tasks, user } = report;
+  const rawPrefs = await getMdPrefs(userId);
+  const ticketTasks = tasks.filter((t) => t.azure_ticket_id);
+
+  // Contexto de variaveis disponivel para interpolacao nos campos de prefs
+  const ctx = {
+    username:      user.username,
+    cargo:         user.cargo?.toString() || "",
+    week_number:   report.week_number.toString(),
+    year:          report.year.toString(),
+    period_start:  formatDatePtBR(report.start_date),
+    period_end:    formatDatePtBR(report.end_date),
+    total_tasks:   tasks.length.toString(),
+    total_tickets: ticketTasks.length.toString(),
+    generated_at:  new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+  };
+
+  // Interpola variaveis em todos os campos de prefs
+  const prefs = {
+    reportTitle:     interpolate(rawPrefs.reportTitle,     ctx),
+    verb:            interpolate(rawPrefs.verb,            ctx),
+    activitySection: interpolate(rawPrefs.activitySection, ctx),
+    ticketSection:   interpolate(rawPrefs.ticketSection,   ctx),
+    footer:          interpolate(rawPrefs.footer,          ctx),
+    headerExtra:     interpolate(rawPrefs.headerExtra,     ctx),
+  };
 
   const lines = [];
 
-  // ─── Cabeçalho ─────────────────────────────────────────────────────────────
-  lines.push(`# Relatório Semanal — Semana ${report.week_number}/${report.year}`);
+  lines.push(`# ${prefs.reportTitle} — Semana ${report.week_number}/${report.year}`);
   lines.push("");
   lines.push(`**Colaborador:** ${user.username}`);
   lines.push(`**Período:** ${formatDatePtBR(report.start_date)} a ${formatDatePtBR(report.end_date)}`);
   lines.push(`**Status:** ${report.status === "open" ? "Em andamento" : "Finalizado"}`);
-  lines.push(`**Gerado em:** ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`);
+  lines.push(`**Gerado em:** ${ctx.generated_at}`);
+  if (prefs.headerExtra) { lines.push(""); lines.push(prefs.headerExtra); }
   lines.push("");
   lines.push("---");
   lines.push("");
@@ -161,16 +217,12 @@ async function generateMarkdown(reportId, userId) {
   if (tasks.length === 0) {
     lines.push("_Nenhuma atividade registrada nesta semana._");
   } else {
-    // ─── Atividades agrupadas por data ────────────────────────────────────────
-    lines.push("## Atividades Realizadas");
+    lines.push(`## ${prefs.activitySection}`);
     lines.push("");
 
-    // Agrupa tasks por data — tasks com task_end_date aparecem em cada dia do intervalo
     const tasksByDate = tasks.reduce((acc, task) => {
       const start = task.task_date;
       const end   = task.task_end_date || task.task_date;
-
-      // Gera todas as datas entre start e end (inclusive)
       const dates = [];
       const cur = new Date(start + "T00:00:00Z");
       const last = new Date(end   + "T00:00:00Z");
@@ -178,46 +230,36 @@ async function generateMarkdown(reportId, userId) {
         dates.push(cur.toISOString().slice(0, 10));
         cur.setUTCDate(cur.getUTCDate() + 1);
       }
-
       dates.forEach((date, idx) => {
         if (!acc[date]) acc[date] = [];
         acc[date].push({ task, isFirstDay: idx === 0 });
       });
-
       return acc;
     }, {});
 
-    // Ordena as datas
     const sortedDates = Object.keys(tasksByDate).sort();
-
-    lines.push(...buildDateSections(tasksByDate, sortedDates));
-
-    // ─── Seção de Tickets Testados ────────────────────────────────────────────
-    const ticketTasks = tasks.filter((t) => t.azure_ticket_id);
+    lines.push(...buildDateSections(tasksByDate, sortedDates, prefs.verb));
 
     if (ticketTasks.length > 0) {
       lines.push("---");
       lines.push("");
-      lines.push("## Tickets Testados");
+      lines.push(`## ${prefs.ticketSection}`);
       lines.push("");
       lines.push("| Ticket | Descricao | Data | Status |");
       lines.push("|--------|-----------|------|--------|");
-
       for (const task of ticketTasks) {
         const statusLabel = task.taskStatus?.name || "—";
         lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${task.task_date} | ${statusLabel} |`);
       }
-
       lines.push("");
     }
 
-    // ─── Resumo ───────────────────────────────────────────────────────────────
     lines.push("---");
     lines.push("");
     lines.push("## Resumo");
     lines.push("");
     lines.push(`- **Total de atividades:** ${tasks.length}`);
-    lines.push(`- **Tickets testados:** ${ticketTasks.length}`);
+    lines.push(`- **${prefs.ticketSection}:** ${ticketTasks.length}`);
     lines.push(`- **Atividades concluidas:** ${tasks.filter((t) => t.taskStatus?.name?.toLowerCase().includes("conclu")).length}`);
 
     if (report.notes) {
@@ -230,74 +272,33 @@ async function generateMarkdown(reportId, userId) {
 
   lines.push("");
   lines.push("---");
-  lines.push("_Relatorio gerado automaticamente pelo sistema Weekly Reports._");
+  lines.push(prefs.footer || "_Relatorio gerado automaticamente pelo sistema Weekly Reports._");
 
-  // ─── Salva o arquivo ──────────────────────────────────────────────────────
-  const reportsDir = path.resolve(
-    __dirname,
-    "../../",
-    process.env.REPORTS_DIR || "reports/generated"
-  );
-
-  // Cria a pasta se não existir
-  if (!fs.existsSync(reportsDir)) {
-    fs.mkdirSync(reportsDir, { recursive: true });
-  }
+  const reportsDir = path.resolve(__dirname, "../../", process.env.REPORTS_DIR || "reports/generated");
+  if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
 
   const filename = `relatorio-semana${report.week_number}-${report.year}-${user.username}.md`;
   const filePath = path.join(reportsDir, filename);
-
   fs.writeFileSync(filePath, lines.join("\n"), "utf-8");
-
   return filePath;
 }
 
-/**
- * Fecha um relatório semanal (status: closed).
- * Um relatório fechado pode ainda ser visualizado, mas não receberá novas tarefas.
- *
- * @param {number} reportId
- * @param {number} userId
- * @returns {Promise<WeeklyReport>}
- */
 async function closeReport(reportId, userId) {
   const report = await getReport(reportId, userId);
-
-  if (report.status === "closed") {
-    throw new AppError("Este relatório já está fechado.", 409);
-  }
-
+  if (report.status === "closed") throw new AppError("Este relatório já está fechado.", 409);
   await report.update({ status: "closed" });
   return report;
 }
 
-/**
- * Gera um arquivo Markdown para um período customizado (data inicio → data fim).
- *
- * Busca tarefas diretamente por task_date no intervalo, sem depender de WeeklyReport.
- *
- * @param {number} userId
- * @param {string} dataInicio  Formato YYYY-MM-DD
- * @param {string} dataFim     Formato YYYY-MM-DD
- * @returns {Promise<string>} Caminho absoluto do arquivo .md gerado
- */
 async function generateMarkdownForPeriod(userId, dataInicio, dataFim) {
-  if (!dataInicio || !dataFim) {
-    throw new AppError("Parâmetros dataInicio e dataFim são obrigatórios.", 400);
-  }
-
-  if (dataInicio > dataFim) {
-    throw new AppError("dataInicio não pode ser posterior a dataFim.", 400);
-  }
+  if (!dataInicio || !dataFim) throw new AppError("Parâmetros dataInicio e dataFim são obrigatórios.", 400);
+  if (dataInicio > dataFim) throw new AppError("dataInicio não pode ser posterior a dataFim.", 400);
 
   const user = await User.findByPk(userId, { attributes: ["id", "username", "email"] });
   if (!user) throw new AppError("Usuário não encontrado.", 404);
 
   const tasks = await Task.findAll({
-    where: {
-      user_id: userId,
-      task_date: { [Op.between]: [dataInicio, dataFim] },
-    },
+    where: { user_id: userId, task_date: { [Op.between]: [dataInicio, dataFim] } },
     include: [
       { model: ActivityType, as: "activityType" },
       { model: TaskStatus,   as: "taskStatus"   },
@@ -305,14 +306,38 @@ async function generateMarkdownForPeriod(userId, dataInicio, dataFim) {
     order: [["task_date", "ASC"]],
   });
 
+  const rawPrefs = await getMdPrefs(userId);
+  const ticketTasks = tasks.filter((t) => t.azure_ticket_id);
+
+  const ctx = {
+    username:      user.username,
+    cargo:         user.cargo?.toString() || "",
+    period_start:  formatDatePtBR(dataInicio),
+    period_end:    formatDatePtBR(dataFim),
+    total_tasks:   tasks.length.toString(),
+    total_tickets: ticketTasks.length.toString(),
+    generated_at:  new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+    week_number:   "",
+    year:          "",
+  };
+
+  const prefs = {
+    reportTitle:     interpolate(rawPrefs.reportTitle,     ctx),
+    verb:            interpolate(rawPrefs.verb,            ctx),
+    activitySection: interpolate(rawPrefs.activitySection, ctx),
+    ticketSection:   interpolate(rawPrefs.ticketSection,   ctx),
+    footer:          interpolate(rawPrefs.footer,          ctx),
+    headerExtra:     interpolate(rawPrefs.headerExtra,     ctx),
+  };
+
   const lines = [];
 
-  // ─── Cabeçalho ─────────────────────────────────────────────────────────────
-  lines.push(`# Relatório por Período`);
+  lines.push(`# ${prefs.reportTitle} — Período`);
   lines.push("");
   lines.push(`**Colaborador:** ${user.username}`);
   lines.push(`**Período:** ${formatDatePtBR(dataInicio)} a ${formatDatePtBR(dataFim)}`);
-  lines.push(`**Gerado em:** ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`);
+  lines.push(`**Gerado em:** ${ctx.generated_at}`);
+  if (prefs.headerExtra) { lines.push(""); lines.push(prefs.headerExtra); }
   lines.push("");
   lines.push("---");
   lines.push("");
@@ -320,141 +345,85 @@ async function generateMarkdownForPeriod(userId, dataInicio, dataFim) {
   if (tasks.length === 0) {
     lines.push("_Nenhuma atividade registrada neste período._");
   } else {
-    // ─── Atividades agrupadas por data ────────────────────────────────────────
-    lines.push("## Atividades Realizadas");
+    lines.push(`## ${prefs.activitySection}`);
     lines.push("");
 
     const tasksByDate = tasks.reduce((acc, task) => {
       const start = task.task_date;
       const end   = task.task_end_date || task.task_date;
-
       const dates = [];
       const cur  = new Date(start + "T00:00:00Z");
       const last = new Date(end   + "T00:00:00Z");
-      // Limita ao dataFim para não vazar fora do período solicitado
       const fence = new Date(dataFim + "T00:00:00Z");
       while (cur <= last && cur <= fence) {
         dates.push(cur.toISOString().slice(0, 10));
         cur.setUTCDate(cur.getUTCDate() + 1);
       }
-
       dates.forEach((date, idx) => {
         if (!acc[date]) acc[date] = [];
         acc[date].push({ task, isFirstDay: idx === 0 });
       });
-
       return acc;
     }, {});
 
     const sortedDates = Object.keys(tasksByDate).sort();
-
-    lines.push(...buildDateSections(tasksByDate, sortedDates));
-
-    // ─── Tickets testados ─────────────────────────────────────────────────────
-    const ticketTasks = tasks.filter((t) => t.azure_ticket_id);
+    lines.push(...buildDateSections(tasksByDate, sortedDates, prefs.verb));
 
     if (ticketTasks.length > 0) {
       lines.push("---");
       lines.push("");
-      lines.push("## Tickets Testados");
+      lines.push(`## ${prefs.ticketSection}`);
       lines.push("");
       lines.push("| Ticket | Descricao | Data | Status |");
       lines.push("|--------|-----------|------|--------|");
-
       for (const task of ticketTasks) {
         const statusLabel = task.taskStatus?.name || "—";
         lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${task.task_date} | ${statusLabel} |`);
       }
-
       lines.push("");
     }
 
-    // ─── Resumo ───────────────────────────────────────────────────────────────
     lines.push("---");
     lines.push("");
     lines.push("## Resumo");
     lines.push("");
     lines.push(`- **Total de atividades:** ${tasks.length}`);
-    lines.push(`- **Tickets testados:** ${ticketTasks.length}`);
+    lines.push(`- **${prefs.ticketSection}:** ${ticketTasks.length}`);
     lines.push(`- **Atividades concluidas:** ${tasks.filter((t) => t.taskStatus?.name?.toLowerCase().includes("conclu")).length}`);
   }
 
   lines.push("");
   lines.push("---");
-  lines.push("_Relatorio gerado automaticamente pelo sistema Weekly Reports._");
+  lines.push(prefs.footer || "_Relatorio gerado automaticamente pelo sistema Weekly Reports._");
 
-  // ─── Salva o arquivo ──────────────────────────────────────────────────────
-  const reportsDir = path.resolve(
-    __dirname,
-    "../../",
-    process.env.REPORTS_DIR || "reports/generated"
-  );
-
-  if (!fs.existsSync(reportsDir)) {
-    fs.mkdirSync(reportsDir, { recursive: true });
-  }
+  const reportsDir = path.resolve(__dirname, "../../", process.env.REPORTS_DIR || "reports/generated");
+  if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
 
   const filename = `relatorio-periodo-${dataInicio}-${dataFim}-${user.username}.md`;
   const filePath = path.join(reportsDir, filename);
-
   fs.writeFileSync(filePath, lines.join("\n"), "utf-8");
-
   return filePath;
 }
 
-/**
- * Retorna (ou cria) o relatório da semana ISO atual.
- *
- * @param {number} userId
- * @returns {Promise<{ report: WeeklyReport, created: boolean }>}
- */
 async function getCurrentReport(userId) {
   const { weekNumber, year } = getISOWeek(new Date());
   const { startDate, endDate } = getWeekBounds(weekNumber, year);
-
   const [report, created] = await WeeklyReport.findOrCreate({
     where: { user_id: userId, week_number: weekNumber, year },
-    defaults: {
-      user_id: userId,
-      week_number: weekNumber,
-      year,
-      start_date: startDate,
-      end_date: endDate,
-      status: "open",
-    },
+    defaults: { user_id: userId, week_number: weekNumber, year, start_date: startDate, end_date: endDate, status: "open" },
   });
-
   const full = await getReport(report.id, userId);
   return { report: full, created };
 }
 
-/**
- * Retorna o relatório para uma data específica.
- * - Semana atual: findOrCreate (garante que existe)
- * - Semanas passadas/futuras: findOne apenas (não cria relatório vazio)
- *
- * @param {number} userId
- * @param {string} date  Formato YYYY-MM-DD
- * @returns {Promise<{ report: WeeklyReport|null, created: boolean }>}
- */
 async function getReportForDate(userId, date) {
-  const targetDate  = new Date(date + "T12:00:00Z");
+  const targetDate = new Date(date + "T12:00:00Z");
   const { weekNumber, year } = getISOWeek(targetDate);
-
   const { weekNumber: currentWeek, year: currentYear } = getISOWeek(new Date());
   const isCurrentWeek = weekNumber === currentWeek && year === currentYear;
-
-  if (isCurrentWeek) {
-    return getCurrentReport(userId);
-  }
-
-  // Semana diferente: apenas leitura, sem criar relatório
-  const report = await WeeklyReport.findOne({
-    where: { user_id: userId, week_number: weekNumber, year },
-  });
-
+  if (isCurrentWeek) return getCurrentReport(userId);
+  const report = await WeeklyReport.findOne({ where: { user_id: userId, week_number: weekNumber, year } });
   if (!report) return { report: null, created: false };
-
   const full = await getReport(report.id, userId);
   return { report: full, created: false };
 }

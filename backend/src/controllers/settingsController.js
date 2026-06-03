@@ -13,6 +13,8 @@ const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
 const getAll = asyncHandler(async (req, res) => {
+  // Passa o cargo para garantir defaults corretos na primeira inicializacao
+  await settingsService.initDefaultsForUser(req.user.id, req.user.cargo);
   const settings = await settingsService.getAll(req.user.id, true);
   return success(res, { settings });
 });
