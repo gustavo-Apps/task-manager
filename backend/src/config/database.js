@@ -6,6 +6,7 @@
  */
 
 const { Sequelize } = require("sequelize");
+const { getAuditNamespace } = require("../utils/auditContext");
 
 // Railway injeta MYSQLHOST, MYSQLPORT, MYSQLDATABASE, MYSQLUSER, MYSQLPASSWORD
 // Fallback para DB_* usados no desenvolvimento local
@@ -14,6 +15,11 @@ const dbUser = process.env.DB_USER     || process.env.MYSQLUSER     || "root";
 const dbPass = process.env.DB_PASS     || process.env.MYSQLPASSWORD || "";
 const dbHost = process.env.DB_HOST     || process.env.MYSQLHOST     || "localhost";
 const dbPort = process.env.DB_PORT     || process.env.MYSQLPORT     || 3306;
+
+// Integra o namespace CLS ao Sequelize ANTES de criar a instância.
+// Isso garante que os hooks de auditoria consigam ler o userId
+// do contexto do request atual, mesmo dentro de Promises encadeadas.
+Sequelize.useCLS(getAuditNamespace());
 
 const sequelize = new Sequelize(dbName, dbUser, dbPass, {
   host: dbHost,

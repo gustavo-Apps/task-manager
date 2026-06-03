@@ -12,8 +12,13 @@ const rateLimit = require("express-rate-limit");
 
 const routes = require("./routes");
 const errorHandler = require("./middleware/errorHandler");
+const { auditContextMiddleware } = require("./utils/auditContext");
 
 const app = express();
+
+// Abre o contexto CLS por request — DEVE ser o primeiro middleware.
+// Sem isso, os hooks de auditoria não conseguem ler o userId.
+app.use(auditContextMiddleware);
 
 // Helmet adiciona headers HTTP de segurança (CSP, HSTS, etc.)
 app.use(helmet());

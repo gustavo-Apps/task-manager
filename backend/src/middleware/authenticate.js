@@ -12,6 +12,7 @@
 
 const jwt = require("jsonwebtoken");
 const AppError = require("../utils/AppError");
+const { setAuditUserId } = require("../utils/auditContext");
 
 function authenticate(req, _res, next) {
   const authHeader = req.headers.authorization;
@@ -38,6 +39,10 @@ function authenticate(req, _res, next) {
       email: payload.email,
       role: payload.role,
     };
+
+    // Grava o userId no contexto CLS para que os hooks de auditoria
+    // possam ler quem fez a operação, sem precisar passar por parâmetro.
+    setAuditUserId(payload.sub);
 
     next();
   } catch (err) {

@@ -14,6 +14,8 @@ const ActivityType = require("./ActivityType");
 const TaskStatus = require("./TaskStatus");
 const WeeklyReport = require("./WeeklyReport");
 const Task = require("./Task");
+const AuditLog = require("./AuditLog");
+const { applyAuditHooksToAll } = require("../utils/auditHooks");
 
 // Um usuário tem vários relatórios semanais
 User.hasMany(WeeklyReport, { foreignKey: "user_id", as: "weeklyReports" });
@@ -35,4 +37,10 @@ Task.belongsTo(ActivityType, { foreignKey: "activity_type_id", as: "activityType
 TaskStatus.hasMany(Task, { foreignKey: "task_status_id", as: "tasks" });
 Task.belongsTo(TaskStatus, { foreignKey: "task_status_id", as: "taskStatus" });
 
-module.exports = { User, ActivityType, TaskStatus, WeeklyReport, Task, UserCargos, Setting };
+module.exports = { User, ActivityType, TaskStatus, WeeklyReport, Task, UserCargos, Setting, AuditLog };
+
+// Aplica hooks de auditoria em todos os models que representam dados de negócio.
+// AuditLog e Setting são excluídos intencionalmente:
+//   - AuditLog: auditá-lo causaria loop infinito
+//   - Setting: mudanças de config não precisam de audit trail detalhado
+applyAuditHooksToAll([User, ActivityType, TaskStatus, WeeklyReport, Task, UserCargos]);
