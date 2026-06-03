@@ -27,6 +27,8 @@ const registerSchema = Joi.object({
     .messages({
       "string.min": "Senha deve ter pelo menos 3 caracteres",
     }),
+  
+  cargo: Joi.number().integer().min(1).max(5).required(),
 });
 
 const loginSchema = Joi.object({

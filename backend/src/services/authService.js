@@ -19,10 +19,10 @@ const BCRYPT_SALT_ROUNDS = 12;
 
 /**
  * Registra um novo usuário.
- * @param {{ username, email, password }} data
+ * @param {{ username, email, password, cargo }} data
  * @returns {Promise<User>} Usuário criado (sem password_hash)
  */
-async function register({ username, email, password }) {
+async function register({ username, email, password, cargo }) {
   // Verifica duplicatas antes de tentar inserir
   const existing = await User.unscoped().findOne({
     where: { email },

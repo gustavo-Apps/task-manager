@@ -20,7 +20,7 @@ async function start() {
     console.log("Banco de dados conectado com sucesso.");
 
     // Sincroniza o schema do banco (alter: true ajusta sem perder dados)
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: false });
     console.log("Schema sincronizado.");
 
     // Inicializa configuracoes padrao (ClickUp, etc.) se ainda nao existirem
