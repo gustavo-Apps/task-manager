@@ -148,7 +148,7 @@ export default function ReportsPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-gray-400">Carregando...</p>;
+  if (loading) return <p className="text-sm text-gray-300">Carregando...</p>;
 
   return (
     <div className="max-w-3xl">
@@ -156,11 +156,11 @@ export default function ReportsPage() {
       {/* Cabeçalho */}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-white">Historico de Relatorios</h1>
-        <p className="text-sm text-gray-400 mt-1">{reports.length} semana(s) registrada(s)</p>
+        <p className="text-sm text-gray-300 mt-1">{reports.length} semana(s) registrada(s)</p>
       </div>
 
       {/* Filtro por período */}
-      <div className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 mb-5 flex flex-wrap items-end gap-3">
+      <div className="bg-gray-700 border border-gray-500 rounded-lg px-4 py-3 mb-5 flex flex-wrap items-end gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-300 mb-1.5">Relatorio por Semana / Periodo</label>
           <div className="flex gap-1">
@@ -171,7 +171,7 @@ export default function ReportsPage() {
                 className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                   preset === p.value
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white"
                 }`}
               >
                 {p.label}
@@ -186,7 +186,7 @@ export default function ReportsPage() {
             type="date"
             value={range.from}
             onChange={(e) => updateRange({ from: e.target.value })}
-            className="bg-gray-800 border border-gray-600 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
+            className="bg-gray-700 border border-gray-500 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
           />
         </div>
         <div>
@@ -195,7 +195,7 @@ export default function ReportsPage() {
             type="date"
             value={range.to}
             onChange={(e) => updateRange({ to: e.target.value })}
-            className="bg-gray-800 border border-gray-600 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
+            className="bg-gray-700 border border-gray-500 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
           />
         </div>
         <button
@@ -212,8 +212,8 @@ export default function ReportsPage() {
 
       {/* Lista de relatórios */}
       {reports.length === 0 ? (
-        <div className="border border-dashed border-gray-700 rounded-lg p-10 text-center">
-          <p className="text-sm text-gray-400">Nenhum relatorio ainda.</p>
+        <div className="border border-dashed border-gray-600 rounded-lg p-10 text-center">
+          <p className="text-sm text-gray-300">Nenhum relatorio ainda.</p>
           <Link to="/tasks/new" className="text-xs text-blue-400 hover:text-blue-300 hover:underline mt-3 inline-block">
             Adicionar primeira tarefa
           </Link>
@@ -223,7 +223,7 @@ export default function ReportsPage() {
           {reports.map((report) => (
             <div
               key={report.id}
-              className="bg-gray-900 border border-gray-700 hover:border-gray-600 rounded-lg px-4 py-3.5 flex items-center justify-between gap-4 transition-colors"
+              className="bg-gray-700 border border-gray-500 hover:border-gray-600 rounded-lg px-4 py-3.5 flex items-center justify-between gap-4 transition-colors"
             >
               <div>
                 <div className="flex items-center gap-2">
@@ -234,28 +234,28 @@ export default function ReportsPage() {
                     className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                       report.status === "open"
                         ? "bg-green-800/50 text-green-300"
-                        : "bg-gray-700 text-gray-400"
+                        : "bg-gray-700 text-gray-300"
                     }`}
                   >
                     {report.status === "open" ? "Aberto" : "Fechado"}
                   </span>
                 </div>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-gray-300 mt-0.5">
                   {report.start_date} ate {report.end_date}
-                  <span className="ml-2 text-gray-500">{report.tasks?.length ?? 0} atividade(s)</span>
+                  <span className="ml-2 text-gray-400">{report.tasks?.length ?? 0} atividade(s)</span>
                 </p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
                 <Link
                   to={`/reports/${report.id}`}
-                  className="text-xs text-gray-300 hover:text-white px-2 py-1 rounded hover:bg-gray-800 transition-colors"
+                  className="text-xs text-gray-300 hover:text-white px-2 py-1 rounded hover:bg-gray-600 transition-colors"
                 >
                   Ver
                 </Link>
                 <button
                   onClick={() => handleDownload(report)}
-                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 px-2 py-1 rounded hover:bg-gray-800 transition-colors"
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 px-2 py-1 rounded hover:bg-gray-600 transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 8l-3-3m3 3l3-3" />

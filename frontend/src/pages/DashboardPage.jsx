@@ -143,13 +143,13 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-xl font-bold text-white">Dashboard</h1>
           {!loading && report && (
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-gray-300 mt-1">
               Semana {report.week_number}/{report.year} &mdash; {report.start_date} ate {report.end_date}
               <span
                 className={`ml-3 px-2 py-0.5 rounded text-xs font-medium ${
                   report.status === "open"
                     ? "bg-green-800/50 text-green-300"
-                    : "bg-gray-700 text-gray-400"
+                    : "bg-gray-700 text-gray-300"
                 }`}
               >
                 {report.status === "open" ? "Em andamento" : "Fechado"}
@@ -174,7 +174,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ─── Filtro de semana ─────────────────────────────────────────────── */}
-      <div className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 mb-5 flex flex-wrap items-end gap-4">
+      <div className="bg-gray-700 border border-gray-500 rounded-lg px-4 py-3 mb-5 flex flex-wrap items-end gap-4">
         <div>
           <label className="block text-xs font-medium text-gray-300 mb-1.5">Semana</label>
           <div className="flex gap-1">
@@ -185,7 +185,7 @@ export default function DashboardPage() {
                 className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                   preset === p.value
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white"
                 }`}
               >
                 {p.label}
@@ -201,7 +201,7 @@ export default function DashboardPage() {
               type="date"
               value={dateParam}
               onChange={(e) => setDate(e.target.value)}
-              className="bg-gray-800 border border-gray-600 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
+              className="bg-gray-700 border border-gray-500 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
             />
           </div>
         )}
@@ -209,7 +209,7 @@ export default function DashboardPage() {
         {/* Filtros inline */}
         <div className="ml-auto flex items-end gap-2">
           <div className="relative">
-            <span className="absolute inset-y-0 left-2 flex items-center text-gray-400 pointer-events-none">
+            <span className="absolute inset-y-0 left-2 flex items-center text-gray-300 pointer-events-none">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 0 5 11a6 6 0 0 0 12 0z" />
               </svg>
@@ -219,14 +219,14 @@ export default function DashboardPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar titulo, ticket..."
-              className="bg-gray-800 border border-gray-600 text-gray-100 placeholder-gray-500 text-xs rounded pl-7 pr-3 py-2 w-48 focus:outline-none focus:border-blue-500"
+              className="bg-gray-700 border border-gray-500 text-gray-100 placeholder-gray-400 text-xs rounded pl-7 pr-3 py-2 w-48 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-gray-800 border border-gray-600 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
+            className="bg-gray-700 border border-gray-500 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
           >
             <option value="">Todos os status</option>
             {taskStatuses.map((s) => (
@@ -245,13 +245,13 @@ export default function DashboardPage() {
 
       {/* ─── Estado de carregamento ────────────────────────────────────────── */}
       {loading && (
-        <p className="text-sm text-gray-400">Carregando...</p>
+        <p className="text-sm text-gray-300">Carregando...</p>
       )}
 
       {/* ─── Lista de tarefas ─────────────────────────────────────────────── */}
       {!loading && (!report || filteredTasks.length === 0) ? (
-        <div className="border border-dashed border-gray-700 rounded-lg p-10 text-center">
-          <p className="text-sm text-gray-400">
+        <div className="border border-dashed border-gray-600 rounded-lg p-10 text-center">
+          <p className="text-sm text-gray-300">
             {statusFilter || search
               ? "Nenhuma atividade corresponde ao filtro."
               : report
@@ -271,7 +271,7 @@ export default function DashboardPage() {
           {filteredTasks.map((task) => (
             <div
               key={task.id}
-              className="bg-gray-900 border border-gray-700 hover:border-gray-600 rounded-lg px-4 py-3 flex items-start justify-between gap-4 transition-colors"
+              className="bg-gray-700 border border-gray-500 hover:border-gray-600 rounded-lg px-4 py-3 flex items-start justify-between gap-4 transition-colors"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -283,7 +283,7 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <span className="text-xs text-gray-400">{task.task_date}</span>
+                  <span className="text-xs text-gray-300">{task.task_date}</span>
                   {task.activityType && (
                     <Badge label={task.activityType.name} color={task.activityType.color} />
                   )}
@@ -292,7 +292,7 @@ export default function DashboardPage() {
                   )}
                 </div>
                 {task.description && (
-                  <p className="text-xs text-gray-400 mt-1.5 line-clamp-1">{task.description}</p>
+                  <p className="text-xs text-gray-300 mt-1.5 line-clamp-1">{task.description}</p>
                 )}
               </div>
 

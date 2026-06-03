@@ -106,7 +106,7 @@ export default function SettingsPage() {
     setShowTokens((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  if (loading) return <p className="text-sm text-gray-400">Carregando...</p>;
+  if (loading) return <p className="text-sm text-gray-300">Carregando...</p>;
 
   return (
     <div className="max-w-xl">
@@ -114,17 +114,17 @@ export default function SettingsPage() {
       {/* Cabeçalho */}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-white">Configuracoes</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-gray-300 mt-1">
           Tokens e parametros de integracao. Valores sensiveis sao armazenados no banco de dados.
         </p>
       </div>
 
       {/* ClickUp section */}
-      <div className="bg-gray-900 border border-gray-700 rounded-lg p-5 mb-5">
+      <div className="bg-gray-700 border border-gray-500 rounded-lg p-5 mb-5">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-sm font-semibold text-white">Integracao ClickUp</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Configure o token e workspace para enviar relatorios</p>
+            <p className="text-xs text-gray-300 mt-0.5">Configure o token e workspace para enviar relatorios</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -162,7 +162,7 @@ export default function SettingsPage() {
                 </label>
 
                 {currentMasked && (
-                  <p className="text-xs text-gray-500 mb-1.5 font-mono bg-gray-800 px-2 py-1 rounded border border-gray-700">
+                  <p className="text-xs text-gray-400 mb-1.5 font-mono bg-gray-800 px-2 py-1 rounded border border-gray-600">
                     Atual: {currentMasked}
                   </p>
                 )}
@@ -173,20 +173,20 @@ export default function SettingsPage() {
                     value={form[key] || ""}
                     onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
                     placeholder={currentMasked ? "Deixe vazio para manter o atual" : meta.placeholder}
-                    className="w-full bg-gray-800 border border-gray-600 text-gray-100 placeholder-gray-500 text-xs rounded px-3 py-2.5 focus:outline-none focus:border-blue-500 pr-16 font-mono"
+                    className="w-full bg-gray-700 border border-gray-500 text-gray-100 placeholder-gray-400 text-xs rounded px-3 py-2.5 focus:outline-none focus:border-blue-500 pr-16 font-mono"
                   />
                   {meta.sensitive && (
                     <button
                       type="button"
                       onClick={() => toggleShow(key)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-300 hover:text-gray-200 transition-colors"
                     >
                       {isVisible ? "Ocultar" : "Mostrar"}
                     </button>
                   )}
                 </div>
 
-                <p className="text-xs text-gray-500 mt-1">{meta.description}</p>
+                <p className="text-xs text-gray-400 mt-1">{meta.description}</p>
               </div>
             );
           })}
@@ -204,7 +204,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Instruções */}
-      <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 text-xs text-gray-400 space-y-2">
+      <div className="bg-gray-700 border border-gray-500 rounded-lg p-4 text-xs text-gray-300 space-y-2">
         <p className="font-semibold text-gray-200">Como obter as informacoes do ClickUp:</p>
         <ol className="list-decimal list-inside space-y-1.5">
           <li>

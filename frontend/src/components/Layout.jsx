@@ -1,6 +1,5 @@
 /**
  * Layout base das páginas autenticadas.
- * Sidebar de navegação + área de conteúdo.
  */
 
 import { NavLink, useNavigate } from "react-router-dom";
@@ -25,17 +24,17 @@ export default function Layout({ children }) {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-950 text-gray-100">
-      {/* Sidebar */}
-      <aside className="w-56 shrink-0 bg-gray-900 border-r border-gray-700 flex flex-col">
+    <div className="min-h-screen flex bg-gray-900 text-gray-100">
+      {/* Sidebar — tom levemente diferente do body */}
+      <aside className="w-56 shrink-0 bg-gray-800 border-r border-gray-600 flex flex-col">
         {/* Logo / título */}
-        <div className="px-5 py-5 border-b border-gray-700">
+        <div className="px-5 py-5 border-b border-gray-600">
           <span className="text-sm font-bold tracking-wide text-white">Weekly Reports</span>
           <div className="mt-2 flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
               {user?.username?.[0]?.toUpperCase() || "U"}
             </div>
-            <p className="text-xs text-gray-300 truncate">{user?.username}</p>
+            <p className="text-xs text-gray-200 truncate">{user?.username}</p>
           </div>
         </div>
 
@@ -47,10 +46,10 @@ export default function Layout({ children }) {
               to={item.to}
               end={item.to === "/"}
               className={({ isActive }) =>
-                `flex items-center gap-2 px-3 py-2.5 rounded text-sm font-medium transition-colors ${
+                `flex items-center px-3 py-2.5 rounded text-sm font-medium transition-colors border-l-2 ${
                   isActive
-                    ? "bg-blue-600/20 text-blue-300 border-l-2 border-blue-400 pl-[10px]"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-white border-l-2 border-transparent pl-[10px]"
+                    ? "bg-blue-600/25 text-white border-blue-400"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white border-transparent"
                 }`
               }
             >
@@ -60,17 +59,17 @@ export default function Layout({ children }) {
         </nav>
 
         {/* Sair */}
-        <div className="px-2 py-4 border-t border-gray-700">
+        <div className="px-2 py-4 border-t border-gray-600">
           <button
             onClick={handleLogout}
-            className="w-full text-left px-3 py-2.5 rounded text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+            className="w-full text-left px-3 py-2.5 rounded text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
           >
             Sair
           </button>
         </div>
       </aside>
 
-      {/* Conteúdo */}
+      {/* Conteúdo principal */}
       <main className="flex-1 overflow-y-auto p-8">
         {children}
       </main>

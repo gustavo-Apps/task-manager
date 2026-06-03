@@ -39,7 +39,7 @@ export default function ReportDetailPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-gray-400">Carregando...</p>;
+  if (loading) return <p className="text-sm text-gray-300">Carregando...</p>;
   if (!report)  return <p className="text-sm text-red-400">Relatorio nao encontrado.</p>;
 
   return (
@@ -48,7 +48,7 @@ export default function ReportDetailPage() {
       {/* Cabeçalho */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <Link to="/reports" className="text-xs text-gray-400 hover:text-gray-200 transition-colors flex items-center gap-1 mb-2">
+          <Link to="/reports" className="text-xs text-gray-300 hover:text-gray-200 transition-colors flex items-center gap-1 mb-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -57,9 +57,9 @@ export default function ReportDetailPage() {
           <h1 className="text-xl font-bold text-white">
             Semana {report.week_number}/{report.year}
           </h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-sm text-gray-300 mt-0.5">
             {report.start_date} ate {report.end_date}
-            <span className="ml-2 text-gray-500">{report.tasks.length} atividade(s)</span>
+            <span className="ml-2 text-gray-400">{report.tasks.length} atividade(s)</span>
           </p>
         </div>
         <button
@@ -76,13 +76,13 @@ export default function ReportDetailPage() {
 
       {/* Lista */}
       {report.tasks.length === 0 ? (
-        <div className="border border-dashed border-gray-700 rounded-lg p-10 text-center">
-          <p className="text-sm text-gray-400">Nenhuma atividade registrada.</p>
+        <div className="border border-dashed border-gray-600 rounded-lg p-10 text-center">
+          <p className="text-sm text-gray-300">Nenhuma atividade registrada.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {report.tasks.map((task) => (
-            <div key={task.id} className="bg-gray-900 border border-gray-700 hover:border-gray-600 rounded-lg px-4 py-3 transition-colors">
+            <div key={task.id} className="bg-gray-700 border border-gray-500 hover:border-gray-600 rounded-lg px-4 py-3 transition-colors">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -94,7 +94,7 @@ export default function ReportDetailPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <span className="text-xs text-gray-400">{task.task_date}</span>
+                    <span className="text-xs text-gray-300">{task.task_date}</span>
                     {task.activityType && (
                       <Badge label={task.activityType.name} color={task.activityType.color} />
                     )}
@@ -103,7 +103,7 @@ export default function ReportDetailPage() {
                     )}
                   </div>
                   {task.description && (
-                    <p className="text-xs text-gray-400 mt-2">{task.description}</p>
+                    <p className="text-xs text-gray-300 mt-2">{task.description}</p>
                   )}
                   {task.discord_link && (
                     <a

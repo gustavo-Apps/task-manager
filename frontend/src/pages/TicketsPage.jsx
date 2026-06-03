@@ -76,13 +76,13 @@ export default function TicketsPage() {
         <div>
           <h1 className="text-xl font-bold text-white">Tickets Testados</h1>
           {searched && !loading && (
-            <p className="text-sm text-gray-400 mt-1">{tickets.length} ticket(s) encontrado(s)</p>
+            <p className="text-sm text-gray-300 mt-1">{tickets.length} ticket(s) encontrado(s)</p>
           )}
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 mb-5 flex flex-wrap items-end gap-4">
+      <div className="bg-gray-700 border border-gray-500 rounded-lg px-4 py-3 mb-5 flex flex-wrap items-end gap-4">
         <div>
           <label className="block text-xs font-medium text-gray-300 mb-1.5">Periodo</label>
           <div className="flex gap-1">
@@ -93,7 +93,7 @@ export default function TicketsPage() {
                 className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                   preset === p.value
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white"
                 }`}
               >
                 {p.label}
@@ -109,7 +109,7 @@ export default function TicketsPage() {
               type="date"
               value={range.from}
               onChange={(e) => { setPreset("custom"); setRange((r) => ({ ...r, from: e.target.value })); }}
-              className="bg-gray-800 border border-gray-600 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
+              className="bg-gray-700 border border-gray-500 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
             />
           </div>
           <div>
@@ -118,7 +118,7 @@ export default function TicketsPage() {
               type="date"
               value={range.to}
               onChange={(e) => { setPreset("custom"); setRange((r) => ({ ...r, to: e.target.value })); }}
-              className="bg-gray-800 border border-gray-600 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
+              className="bg-gray-700 border border-gray-500 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
             />
           </div>
           {preset === "custom" && (
@@ -134,21 +134,21 @@ export default function TicketsPage() {
       </div>
 
       {/* Carregando */}
-      {loading && <p className="text-sm text-gray-400">Carregando...</p>}
+      {loading && <p className="text-sm text-gray-300">Carregando...</p>}
 
       {/* Vazio */}
       {!loading && searched && tickets.length === 0 && (
-        <div className="border border-dashed border-gray-700 rounded-lg p-10 text-center">
-          <p className="text-sm text-gray-400">Nenhum ticket encontrado neste periodo.</p>
+        <div className="border border-dashed border-gray-600 rounded-lg p-10 text-center">
+          <p className="text-sm text-gray-300">Nenhum ticket encontrado neste periodo.</p>
         </div>
       )}
 
       {/* Tabela */}
       {!loading && tickets.length > 0 && (
-        <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+        <div className="bg-gray-700 border border-gray-500 rounded-lg overflow-hidden">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-gray-700 bg-gray-800/60 text-gray-300 text-left">
+              <tr className="border-b border-gray-600 bg-gray-700/80 text-gray-300 text-left">
                 <th className="px-4 py-3 font-semibold">Ticket</th>
                 <th className="px-4 py-3 font-semibold">Titulo</th>
                 <th className="px-4 py-3 font-semibold">Data</th>
@@ -163,8 +163,8 @@ export default function TicketsPage() {
               {tickets.map((ticket, idx) => (
                 <tr
                   key={ticket.id}
-                  className={`border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors ${
-                    idx % 2 !== 0 ? "bg-gray-800/20" : ""
+                  className={`border-b border-gray-600 last:border-0 hover:bg-gray-600/40 transition-colors ${
+                    idx % 2 !== 0 ? "bg-gray-700/30" : ""
                   }`}
                 >
                   <td className="px-4 py-3">
@@ -186,28 +186,28 @@ export default function TicketsPage() {
                       <span className="line-clamp-1">{ticket.title}</span>
                     )}
                     {ticket.description && (
-                      <span className="block text-gray-500 line-clamp-1 mt-0.5">{ticket.description}</span>
+                      <span className="block text-gray-400 line-clamp-1 mt-0.5">{ticket.description}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
                     {formatDateBR(ticket.task_date)}
                     {ticket.task_end_date && ticket.task_end_date !== ticket.task_date && (
-                      <span className="block text-gray-500">ate {formatDateBR(ticket.task_end_date)}</span>
+                      <span className="block text-gray-400">ate {formatDateBR(ticket.task_end_date)}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     {ticket.activityType
                       ? <Badge label={ticket.activityType.name} color={ticket.activityType.color} />
-                      : <span className="text-gray-600">—</span>
+                      : <span className="text-gray-400">—</span>
                     }
                   </td>
                   <td className="px-4 py-3">
                     {ticket.taskStatus
                       ? <Badge label={ticket.taskStatus.name} color={ticket.taskStatus.color} />
-                      : <span className="text-gray-600">—</span>
+                      : <span className="text-gray-400">—</span>
                     }
                   </td>
-                  <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                  <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
                     S{ticket.weeklyReport?.week_number}/{ticket.weeklyReport?.year}
                   </td>
                   <td className="px-4 py-3">
@@ -216,7 +216,7 @@ export default function TicketsPage() {
                         className="text-blue-400 hover:text-blue-300 transition-colors">
                         Ver
                       </a>
-                    ) : <span className="text-gray-600">—</span>}
+                    ) : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     <a href={`/tasks/${ticket.id}/edit`}
