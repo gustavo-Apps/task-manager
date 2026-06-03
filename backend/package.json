@@ -7,10 +7,16 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "db:sync": "node src/scripts/syncDatabase.js",
-    "db:seed": "node src/scripts/seedDatabase.js"
+    "db:seed": "node src/scripts/seedDatabase.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop weekly-reports-api",
+    "pm2:restart": "pm2 restart weekly-reports-api",
+    "pm2:logs": "pm2 logs weekly-reports-api",
+    "pm2:status": "pm2 status"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "cls-hooked": "^4.2.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
