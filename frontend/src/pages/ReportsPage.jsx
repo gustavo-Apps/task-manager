@@ -1,7 +1,5 @@
 /**
  * Página: Histórico de relatórios semanais
- *
- * Lista todas as semanas com contagem de tarefas e opções de visualização/download.
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -10,29 +8,26 @@ import api from "../lib/api";
 import toast from "react-hot-toast";
 
 const PRESETS = [
-  { label: "Semana atual",    value: "current"  },
-  { label: "Semana passada",  value: "last"     },
-  { label: "Retrasada",       value: "before"   },
-  { label: "Personalizado",   value: "custom"   },
+  { label: "Semana atual",   value: "current" },
+  { label: "Semana passada", value: "last"    },
+  { label: "Retrasada",      value: "before"  },
+  { label: "Personalizado",  value: "custom"  },
 ];
-
 
 export default function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Preset e range vem da URL — persiste ao navegar para task e voltar
   const preset = searchParams.get("preset") || "current";
   const range  = {
     from: searchParams.get("from") || "",
     to:   searchParams.get("to")   || "",
   };
 
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
-  const [sendingClickUp, setSendingClickUp] = useState(null); // reportId sendo enviado
+  const [reports, setReports]           = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [downloading, setDownloading]   = useState(false);
+  const [sendingClickUp, setSendingClickUp] = useState(null);
 
-  // Ref para distinguir mount (URL ja pode ter datas) de clique no preset
   const isFirstRender = useRef(true);
 
   function applyPreset(value) {
@@ -55,21 +50,16 @@ export default function ReportsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Calcula e grava as datas na URL quando o preset muda
   useEffect(() => {
     if (preset === "custom") return;
-
-    // No primeiro render: se a URL ja tem datas, respeita — nao recalcula
     if (isFirstRender.current) {
       isFirstRender.current = false;
       if (range.from && range.to) return;
     }
 
-    const today       = new Date();
+    const today        = new Date();
     const mondayOffset = (today.getDay() + 6) % 7;
-
-    function toISO(d) { return d.toISOString().slice(0, 10); }
-
+    function toISO(d)  { return d.toISOString().slice(0, 10); }
     function getWeekRange(weeksBack) {
       const monday = new Date(today);
       monday.setDate(today.getDate() - mondayOffset - weeksBack * 7);
@@ -83,7 +73,6 @@ export default function ReportsPage() {
       preset === "current" ? getWeekRange(0) :
       preset === "last"    ? getWeekRange(1) :
       preset === "before"  ? getWeekRange(2) : null;
-
     if (!computed) return;
 
     setSearchParams((p) => {
@@ -98,32 +87,24 @@ export default function ReportsPage() {
   async function handleSendClickUp(report) {
     try {
       setSendingClickUp(report.id);
-
-      // Verifica se ja existe Doc vinculado
       const statusRes = await api.get(`/clickup/reports/${report.id}`);
-      const { exists, docUrl } = statusRes.data.data;
+      const { exists } = statusRes.data.data;
 
       let overwrite = false;
       if (exists) {
         const confirmed = window.confirm(
-          `Este relatorio ja foi enviado ao ClickUp anteriormente.\n\nDeseja sobrescrever o Doc existente?`
+          `Este relatorio ja foi enviado ao ClickUp.\n\nDeseja sobrescrever o Doc existente?`
         );
-        if (!confirmed) {
-          setSendingClickUp(null);
-          return;
-        }
+        if (!confirmed) { setSendingClickUp(null); return; }
         overwrite = true;
       }
 
       const res = await api.post(`/clickup/reports/${report.id}`, { overwrite });
       const { doc, message } = res.data.data;
       toast.success(message);
-      if (doc.docUrl) {
-        window.open(doc.docUrl, "_blank", "noopener");
-      }
+      if (doc.docUrl) window.open(doc.docUrl, "_blank", "noopener");
     } catch (err) {
-      const msg = err.response?.data?.message || "Erro ao enviar para o ClickUp.";
-      toast.error(msg);
+      toast.error(err.response?.data?.message || "Erro ao enviar para o ClickUp.");
     } finally {
       setSendingClickUp(null);
     }
@@ -145,14 +126,8 @@ export default function ReportsPage() {
   }
 
   async function handleDownloadForPeriod() {
-    if (!range.from || !range.to) {
-      toast.error("Selecione as datas de inicio e fim.");
-      return;
-    }
-    if (range.from > range.to) {
-      toast.error("A data de inicio nao pode ser posterior ao fim.");
-      return;
-    }
+    if (!range.from || !range.to) { toast.error("Selecione as datas de inicio e fim."); return; }
+    if (range.from > range.to)    { toast.error("Data de inicio nao pode ser posterior ao fim."); return; }
     try {
       setDownloading(true);
       const res = await api.get(`/reports/period`, {
@@ -173,17 +148,21 @@ export default function ReportsPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-gray-500">Carregando...</p>;
+  if (loading) return <p className="text-sm text-gray-400">Carregando...</p>;
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-lg font-semibold text-gray-100 mb-6">Historico de relatorios</h1>
 
-      {/* ─── Filtro por periodo ─────────────────────────────────────────────── */}
-      <div className="bg-gray-900 border border-gray-500 rounded-lg px-4 py-3 mb-6 flex flex-wrap items-end gap-3">
-      {/* Presets */}
+      {/* Cabeçalho */}
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-white">Historico de Relatorios</h1>
+        <p className="text-sm text-gray-400 mt-1">{reports.length} semana(s) registrada(s)</p>
+      </div>
+
+      {/* Filtro por período */}
+      <div className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 mb-5 flex flex-wrap items-end gap-3">
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Relatorio por Semana/Periodo</label>
+          <label className="block text-xs font-medium text-gray-300 mb-1.5">Relatorio por Semana / Periodo</label>
           <div className="flex gap-1">
             {PRESETS.map((p) => (
               <button
@@ -192,7 +171,7 @@ export default function ReportsPage() {
                 className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                   preset === p.value
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
                 {p.label}
@@ -202,37 +181,40 @@ export default function ReportsPage() {
         </div>
 
         <div>
-          <label className="block text-xs text-gray-400 mb-1">De</label>
+          <label className="block text-xs font-medium text-gray-300 mb-1.5">De</label>
           <input
             type="date"
             value={range.from}
             onChange={(e) => updateRange({ from: e.target.value })}
-            className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded px-2 py-2 focus:outline-none focus:border-gray-500"
+            className="bg-gray-800 border border-gray-600 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Ate</label>
+          <label className="block text-xs font-medium text-gray-300 mb-1.5">Ate</label>
           <input
             type="date"
             value={range.to}
             onChange={(e) => updateRange({ to: e.target.value })}
-            className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded px-2 py-2 focus:outline-none focus:border-gray-500"
+            className="bg-gray-800 border border-gray-600 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
           />
         </div>
         <button
           onClick={handleDownloadForPeriod}
           disabled={downloading}
-          className="text-xs bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded px-3 py-2 transition-colors"
+          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded px-3 py-2 transition-colors"
         >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 8l-3-3m3 3l3-3" />
+          </svg>
           {downloading ? "Gerando..." : "Baixar periodo .md"}
         </button>
       </div>
 
-      {/* ─── Lista de relatorios semanais ───────────────────────────────────── */}
+      {/* Lista de relatórios */}
       {reports.length === 0 ? (
-        <div className="border border-dashed border-gray-500 rounded-lg p-10 text-center">
-          <p className="text-sm text-gray-600">Nenhum relatorio ainda.</p>
-          <Link to="/tasks/new" className="text-xs text-blue-500 hover:underline mt-2 inline-block">
+        <div className="border border-dashed border-gray-700 rounded-lg p-10 text-center">
+          <p className="text-sm text-gray-400">Nenhum relatorio ainda.</p>
+          <Link to="/tasks/new" className="text-xs text-blue-400 hover:text-blue-300 hover:underline mt-3 inline-block">
             Adicionar primeira tarefa
           </Link>
         </div>
@@ -241,46 +223,49 @@ export default function ReportsPage() {
           {reports.map((report) => (
             <div
               key={report.id}
-              className="bg-gray-900 border border-gray-500 rounded-lg px-4 py-3 flex items-center justify-between gap-4"
+              className="bg-gray-900 border border-gray-700 hover:border-gray-600 rounded-lg px-4 py-3.5 flex items-center justify-between gap-4 transition-colors"
             >
               <div>
-                <span className="text-sm text-gray-200 font-medium">
-                  Semana {report.week_number}/{report.year}
-                </span>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {report.start_date} ate {report.end_date}
-                  <span className="ml-2 text-gray-600">
-                    {report.tasks?.length ?? 0} atividade(s)
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-white font-semibold">
+                    Semana {report.week_number}/{report.year}
                   </span>
                   <span
-                    className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
+                    className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                       report.status === "open"
-                        ? "bg-green-900/40 text-green-400"
-                        : "bg-gray-800 text-gray-500"
+                        ? "bg-green-800/50 text-green-300"
+                        : "bg-gray-700 text-gray-400"
                     }`}
                   >
                     {report.status === "open" ? "Aberto" : "Fechado"}
                   </span>
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {report.start_date} ate {report.end_date}
+                  <span className="ml-2 text-gray-500">{report.tasks?.length ?? 0} atividade(s)</span>
                 </p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
                 <Link
                   to={`/reports/${report.id}`}
-                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  className="text-xs text-gray-300 hover:text-white px-2 py-1 rounded hover:bg-gray-800 transition-colors"
                 >
                   Ver
                 </Link>
                 <button
                   onClick={() => handleDownload(report)}
-                  className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 px-2 py-1 rounded hover:bg-gray-800 transition-colors"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 8l-3-3m3 3l3-3" />
+                  </svg>
                   .md
                 </button>
                 <button
                   onClick={() => handleSendClickUp(report)}
                   disabled={sendingClickUp === report.id}
-                  className="text-xs bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-white rounded px-2 py-1 transition-colors"
+                  className="text-xs bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-white font-medium rounded px-2.5 py-1 transition-colors"
                 >
                   {sendingClickUp === report.id ? "Enviando..." : "ClickUp"}
                 </button>

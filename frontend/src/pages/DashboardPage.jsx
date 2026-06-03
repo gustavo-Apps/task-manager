@@ -18,10 +18,9 @@ function toISO(d) {
   return d.toISOString().slice(0, 10);
 }
 
-/** Segunda-feira da semana relativa (0 = atual, -1 = anterior, ...) */
 function getMondayOfRelativeWeek(offsetWeeks = 0) {
   const today = new Date();
-  const mondayOffset = (today.getDay() + 6) % 7; // 0=seg, 6=dom
+  const mondayOffset = (today.getDay() + 6) % 7;
   const monday = new Date(today);
   monday.setDate(today.getDate() - mondayOffset + offsetWeeks * 7);
   monday.setHours(0, 0, 0, 0);
@@ -42,9 +41,8 @@ const PRESET_OFFSET = { current: 0, last: -1, before: -2 };
 export default function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Preset e data persistidos na URL
-  const preset     = searchParams.get("preset") || "current";
-  const dateParam  = searchParams.get("date")   || "";
+  const preset       = searchParams.get("preset") || "current";
+  const dateParam    = searchParams.get("date")   || "";
   const statusFilter = searchParams.get("status") || "";
   const search       = searchParams.get("q")      || "";
 
@@ -63,9 +61,9 @@ export default function DashboardPage() {
 
   const [report, setReport]   = useState(null);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const { taskStatuses } = useLookups();
 
-  // Resolve qual data usar para o endpoint
   function resolveDate() {
     if (preset === "custom") return dateParam || toISO(new Date());
     return getMondayOfRelativeWeek(PRESET_OFFSET[preset] ?? 0);
@@ -85,9 +83,8 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }
 
-  // Busca ao montar e ao mudar preset/data
   useEffect(() => {
-    if (preset === "custom" && !dateParam) return; // aguarda o usuário digitar uma data
+    if (preset === "custom" && !dateParam) return;
     fetchReport(resolveDate());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset, dateParam]);
@@ -95,6 +92,7 @@ export default function DashboardPage() {
   async function handleDownload() {
     if (!report) return;
     try {
+      setGenerating(true);
       const res = await api.get(`/reports/${report.id}/markdown`, { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data]));
       const a   = document.createElement("a");
@@ -102,9 +100,11 @@ export default function DashboardPage() {
       a.download = `relatorio-semana${report.week_number}-${report.year}.md`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Relatorio gerado.");
+      toast.success("Relatorio gerado com sucesso.");
     } catch {
       toast.error("Erro ao gerar relatorio.");
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -122,8 +122,6 @@ export default function DashboardPage() {
     }
   }
 
-  // ─── Filtragem local ────────────────────────────────────────────────────────
-
   const filteredTasks = report?.tasks?.filter((task) => {
     const matchStatus = statusFilter ? task.taskStatus?.id === Number(statusFilter) : true;
     const q = search.trim().toLowerCase();
@@ -140,10 +138,45 @@ export default function DashboardPage() {
   return (
     <div className="max-w-4xl">
 
-      {/* ─── Filtro de semana ─────────────────────────────────────────────── */}
-      <div className="bg-gray-900 border border-gray-500 rounded-lg px-4 py-3 mb-6 flex flex-wrap items-end gap-4">
+      {/* ─── Cabeçalho com ação principal ─────────────────────────────────── */}
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Semana</label>
+          <h1 className="text-xl font-bold text-white">Dashboard</h1>
+          {!loading && report && (
+            <p className="text-sm text-gray-400 mt-1">
+              Semana {report.week_number}/{report.year} &mdash; {report.start_date} ate {report.end_date}
+              <span
+                className={`ml-3 px-2 py-0.5 rounded text-xs font-medium ${
+                  report.status === "open"
+                    ? "bg-green-800/50 text-green-300"
+                    : "bg-gray-700 text-gray-400"
+                }`}
+              >
+                {report.status === "open" ? "Em andamento" : "Fechado"}
+              </span>
+            </p>
+          )}
+        </div>
+
+        {/* Ação principal: Gerar Relatório */}
+        {report && (
+          <button
+            onClick={handleDownload}
+            disabled={generating}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors shadow-lg"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 8l-3-3m3 3l3-3" />
+            </svg>
+            {generating ? "Gerando..." : "Gerar Relatorio .md"}
+          </button>
+        )}
+      </div>
+
+      {/* ─── Filtro de semana ─────────────────────────────────────────────── */}
+      <div className="bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 mb-5 flex flex-wrap items-end gap-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-300 mb-1.5">Semana</label>
           <div className="flex gap-1">
             {PRESETS.map((p) => (
               <button
@@ -152,7 +185,7 @@ export default function DashboardPage() {
                 className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                   preset === p.value
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
                 {p.label}
@@ -161,55 +194,22 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Input de data — visível só no modo custom */}
         {preset === "custom" && (
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Qualquer data da semana</label>
+            <label className="block text-xs font-medium text-gray-300 mb-1.5">Qualquer data da semana</label>
             <input
               type="date"
               value={dateParam}
               onChange={(e) => setDate(e.target.value)}
-              className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded px-2 py-2 focus:outline-none focus:border-gray-500"
+              className="bg-gray-800 border border-gray-600 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
             />
           </div>
         )}
-      </div>
 
-      {/* ─── Cabeçalho ────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          {loading ? (
-            <p className="text-sm text-gray-500">Carregando...</p>
-          ) : (
-            <>
-              <h1 className="text-lg font-semibold text-gray-100">
-                {report
-                  ? `Semana ${report.week_number}/${report.year}`
-                  : "Nenhuma atividade nesta semana"}
-              </h1>
-              {report && (
-                <p className="text-xs text-gray-400 mt-1">
-                  {report.start_date} ate {report.end_date}
-                  <span
-                    className={`ml-3 px-2 py-0.5 rounded text-xs ${
-                      report.status === "open"
-                        ? "bg-green-900/40 text-green-400"
-                        : "bg-gray-800 text-gray-500"
-                    }`}
-                  >
-                    {report.status === "open" ? "Em andamento" : "Fechado"}
-                  </span>
-                </p>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Ações + filtros */}
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          {/* Busca */}
+        {/* Filtros inline */}
+        <div className="ml-auto flex items-end gap-2">
           <div className="relative">
-            <span className="absolute inset-y-0 left-2 flex items-center text-gray-500 pointer-events-none">
+            <span className="absolute inset-y-0 left-2 flex items-center text-gray-400 pointer-events-none">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 0 5 11a6 6 0 0 0 12 0z" />
               </svg>
@@ -218,46 +218,40 @@ export default function DashboardPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por titulo, ticket..."
-              className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded pl-7 pr-3 py-2 w-52 focus:outline-none focus:border-gray-500 placeholder-gray-600"
+              placeholder="Buscar titulo, ticket..."
+              className="bg-gray-800 border border-gray-600 text-gray-100 placeholder-gray-500 text-xs rounded pl-7 pr-3 py-2 w-48 focus:outline-none focus:border-blue-500"
             />
           </div>
 
-          {/* Filtro por status */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded px-2 py-2 focus:outline-none focus:border-gray-500"
+            className="bg-gray-800 border border-gray-600 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
           >
             <option value="">Todos os status</option>
             {taskStatuses.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
+              <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
 
           <Link
             to="/tasks/new"
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-3 py-2 rounded transition-colors"
+            className="bg-gray-700 hover:bg-gray-600 text-white text-xs font-medium px-3 py-2 rounded transition-colors"
           >
-            Nova tarefa
+            + Nova tarefa
           </Link>
-          {report && (
-            <button
-              onClick={handleDownload}
-              className="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium px-3 py-2 rounded transition-colors"
-            >
-              Gerar .md
-            </button>
-          )}
         </div>
       </div>
 
+      {/* ─── Estado de carregamento ────────────────────────────────────────── */}
+      {loading && (
+        <p className="text-sm text-gray-400">Carregando...</p>
+      )}
+
       {/* ─── Lista de tarefas ─────────────────────────────────────────────── */}
       {!loading && (!report || filteredTasks.length === 0) ? (
-        <div className="border border-dashed border-gray-800 rounded-lg p-10 text-center">
-          <p className="text-sm text-gray-600">
+        <div className="border border-dashed border-gray-700 rounded-lg p-10 text-center">
+          <p className="text-sm text-gray-400">
             {statusFilter || search
               ? "Nenhuma atividade corresponde ao filtro."
               : report
@@ -267,7 +261,7 @@ export default function DashboardPage() {
               : "Nenhum relatorio encontrado para esta semana."}
           </p>
           {!statusFilter && !search && preset === "current" && (
-            <Link to="/tasks/new" className="text-xs text-blue-500 hover:underline mt-2 inline-block">
+            <Link to="/tasks/new" className="text-xs text-blue-400 hover:text-blue-300 hover:underline mt-3 inline-block">
               Adicionar primeira tarefa
             </Link>
           )}
@@ -277,17 +271,19 @@ export default function DashboardPage() {
           {filteredTasks.map((task) => (
             <div
               key={task.id}
-              className="bg-gray-900 border border-gray-500 rounded-lg px-4 py-3 flex items-start justify-between gap-4"
+              className="bg-gray-900 border border-gray-700 hover:border-gray-600 rounded-lg px-4 py-3 flex items-start justify-between gap-4 transition-colors"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm text-white-200 font-medium truncate">{task.title}</span>
+                  <span className="text-sm text-white font-medium truncate">{task.title}</span>
                   {task.azure_ticket_id && (
-                    <span className="text-xs text-white-500 font-mono">#{task.azure_ticket_id}</span>
+                    <span className="text-xs text-blue-400 font-mono bg-blue-900/30 px-1.5 py-0.5 rounded">
+                      #{task.azure_ticket_id}
+                    </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className="text-xs text-white-600">{task.task_date}</span>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="text-xs text-gray-400">{task.task_date}</span>
                   {task.activityType && (
                     <Badge label={task.activityType.name} color={task.activityType.color} />
                   )}
@@ -296,22 +292,24 @@ export default function DashboardPage() {
                   )}
                 </div>
                 {task.description && (
-                  <p className="text-xs text-gray-300 mt-1 line-clamp-1">{task.description}</p>
+                  <p className="text-xs text-gray-400 mt-1.5 line-clamp-1">{task.description}</p>
                 )}
               </div>
 
-              <Link
-                to={`/tasks/${task.id}/edit`}
-                className="text-xs text-gray-200 hover:text-gray-300 shrink-0 transition-colors"
-              >
-                Editar
-              </Link>
-              <button
-                onClick={() => handleDeleteTask(task.id)}
-                className="text-xs text-gray-200 hover:text-gray-300 shrink-0 transition-colors"
-              >
-                Excluir
-              </button>
+              <div className="flex items-center gap-3 shrink-0">
+                <Link
+                  to={`/tasks/${task.id}/edit`}
+                  className="text-xs text-gray-300 hover:text-white transition-colors"
+                >
+                  Editar
+                </Link>
+                <button
+                  onClick={() => handleDeleteTask(task.id)}
+                  className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                >
+                  Excluir
+                </button>
+              </div>
             </div>
           ))}
         </div>
