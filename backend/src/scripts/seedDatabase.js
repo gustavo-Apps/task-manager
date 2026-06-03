@@ -81,6 +81,7 @@ async function seed() {
         email: "admin@weeklyreports.local",
         password_hash: await bcrypt.hash("Admin@12345", 12),
         role: "admin",
+        cargo: 1,
       },
     });
 

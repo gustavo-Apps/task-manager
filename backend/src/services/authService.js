@@ -35,7 +35,7 @@ async function register({ username, email, password }) {
 
   const password_hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
-  const user = await User.create({ username, email, password_hash });
+  const user = await User.create({ username, email, password_hash, cargo });
 
   // Retorna sem o hash — nunca exponha a senha
   return User.findByPk(user.id);
