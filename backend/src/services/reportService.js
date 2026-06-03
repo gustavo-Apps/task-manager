@@ -209,7 +209,7 @@ async function generateMarkdown(reportId, userId) {
   lines.push(`**Período:** ${formatDatePtBR(report.start_date)} a ${formatDatePtBR(report.end_date)}`);
   lines.push(`**Status:** ${report.status === "open" ? "Em andamento" : "Finalizado"}`);
   lines.push(`**Gerado em:** ${ctx.generated_at}`);
-  if (prefs.headerExtra) { lines.push(""); lines.push(prefs.headerExtra); }
+  if (prefs.headerExtra) { lines.push(""); prefs.headerExtra.split(/\r?\n/).forEach((l) => lines.push(l)); }
   lines.push("");
   lines.push("---");
   lines.push("");
@@ -337,7 +337,7 @@ async function generateMarkdownForPeriod(userId, dataInicio, dataFim) {
   lines.push(`**Colaborador:** ${user.username}`);
   lines.push(`**Período:** ${formatDatePtBR(dataInicio)} a ${formatDatePtBR(dataFim)}`);
   lines.push(`**Gerado em:** ${ctx.generated_at}`);
-  if (prefs.headerExtra) { lines.push(""); lines.push(prefs.headerExtra); }
+  if (prefs.headerExtra) { lines.push(""); prefs.headerExtra.split(/\r?\n/).forEach((l) => lines.push(l)); }
   lines.push("");
   lines.push("---");
   lines.push("");

@@ -146,7 +146,9 @@ function MdPreview({ values, username }) {
       <p className="text-gray-300 mt-1">&gt; **Colaborador:** {username || "gustavo.rg"}</p>
       <p className="text-gray-300">&gt; **Periodo:** 02/06/2026 a 06/06/2026</p>
       <p className="text-gray-300">&gt; **Gerado em:** {new Date().toLocaleString("pt-BR")}</p>
-      {headerExtra && <p className="text-yellow-300 mt-1">&gt; {headerExtra}</p>}
+      {headerExtra && headerExtra.split(/\r?\n/).map((line, i) => (
+        <p key={i} className="text-yellow-300 mt-1">&gt; {line}</p>
+      ))}
       <p className="text-gray-500 mt-2">---</p>
       <p className="text-green-300 mt-2 font-bold">## {activityTitle}</p>
       <p className="text-gray-400 mt-1">### Terca-feira, 03 de junho de 2026</p>
