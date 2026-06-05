@@ -49,13 +49,16 @@ async function getMdPrefs(userId) {
  * @param {number} userId
  * @returns {Promise<WeeklyReport[]>}
  */
-async function listReports(userId) {
-  return WeeklyReport.findAll({
+async function listReports(userId, { page = 1, limit = 20 } = {}) {
+  const offset = (page - 1) * limit;
+  const { count, rows } = await WeeklyReport.findAndCountAll({
     where: { user_id: userId },
     order: [
       ["year", "DESC"],
       ["week_number", "DESC"],
     ],
+    limit,
+    offset,
     include: [
       {
         model: Task,
@@ -65,6 +68,7 @@ async function listReports(userId) {
       },
     ],
   });
+  return { reports: rows, total: count, page, limit, totalPages: Math.ceil(count / limit) };
 }
 
 /**

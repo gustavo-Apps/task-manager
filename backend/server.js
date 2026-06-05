@@ -7,6 +7,9 @@
 
 require("dotenv").config();
 
+const { validateEnv } = require("./src/utils/validateEnv");
+validateEnv();
+
 const app = require("./src/app");
 const { sequelize } = require("./src/config/database");
 
@@ -21,6 +24,9 @@ async function start() {
     // Sincroniza o schema do banco (alter: true ajusta sem perder dados)
     await sequelize.sync({ alter: false });
     console.log("Schema sincronizado.");
+
+    const { startScheduler } = require("./src/scheduler");
+    startScheduler();
 
     app.listen(PORT, () => {
       console.log(`Servidor rodando em http://localhost:${PORT}`);

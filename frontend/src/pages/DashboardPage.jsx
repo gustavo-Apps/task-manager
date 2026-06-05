@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Página: Dashboard
  *
  * Mostra o relatório da semana selecionada.
@@ -143,17 +143,18 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-xl font-bold text-white">Dashboard</h1>
           {!loading && report && (
-            <p className="text-sm text-gray-300 mt-1">
+            <p className="text-sm text-gray-300 mt-1 flex items-center gap-2 flex-wrap">
               Semana {report.week_number}/{report.year} — {report.start_date} ate {report.end_date}
-              <span
-                className={`ml-3 px-2 py-0.5 rounded text-xs font-medium ${
-                  report.status === "open"
-                    ? "bg-green-800/50 text-green-300"
-                    : "bg-gray-700 text-gray-300"
-                }`}
-              >
+              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                report.status === "open" ? "bg-green-800/50 text-green-300" : "bg-gray-700 text-gray-300"
+              }`}>
                 {report.status === "open" ? "Em andamento" : "Fechado"}
               </span>
+              {preset === "current" && (
+                <span className="bg-blue-800/50 text-blue-300 border border-blue-700 px-2 py-0.5 rounded text-xs font-medium">
+                  Semana atual
+                </span>
+              )}
             </p>
           )}
         </div>
@@ -245,7 +246,24 @@ export default function DashboardPage() {
 
       {/* ─── Estado de carregamento ────────────────────────────────────────── */}
       {loading && (
-        <p className="text-sm text-gray-300">Carregando...</p>
+        <div className="space-y-2 animate-pulse">
+          {[1,2,3,4].map((i) => (
+            <div key={i} className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 flex items-start justify-between gap-4">
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-gray-600 rounded w-1/2" />
+                <div className="flex gap-2">
+                  <div className="h-3 bg-gray-600 rounded w-16" />
+                  <div className="h-3 bg-gray-600 rounded w-20" />
+                  <div className="h-3 bg-gray-600 rounded w-14" />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="h-3 bg-gray-600 rounded w-10" />
+                <div className="h-3 bg-gray-600 rounded w-12" />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* ─── Lista de tarefas ─────────────────────────────────────────────── */}
