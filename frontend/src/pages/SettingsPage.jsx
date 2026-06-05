@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Pagina: Configuracoes
  * Abas: ClickUp | Relatorio .md
  */
@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from "react";
 import api from "../lib/api";
 import toast from "react-hot-toast";
+import { useAuth } from "../contexts/AuthContext";
 
 // ─── Variaveis disponíveis para interpolação ──────────────────────────────────
 
@@ -228,6 +229,111 @@ function FullVarReference() {
   );
 }
 
+// ─── Aba Conta ─────────────────────────────────────────────────────────────────
+
+function ProfileTab() {
+  const { user, login } = useAuth();
+  const [form, setForm] = useState({ username: "", new_password: "", confirm_password: "", current_password: "" });
+  const [saving, setSaving] = useState(false);
+  const [showPass, setShowPass] = useState(false);
+
+  function handleChange(e) {
+    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (form.new_password && form.new_password !== form.confirm_password) {
+      toast.error("Nova senha e confirmacao nao coincidem."); return;
+    }
+    if (!form.current_password) { toast.error("Informe a senha atual."); return; }
+    const payload = { current_password: form.current_password };
+    if (form.username.trim())     payload.username     = form.username.trim();
+    if (form.new_password.trim()) payload.new_password = form.new_password.trim();
+    if (!payload.username && !payload.new_password) { toast("Nenhuma alteracao informada.", { icon: "ℹ️" }); return; }
+    try {
+      setSaving(true);
+      const res = await api.patch("/auth/profile", payload);
+      const updatedUser = res.data.data.user;
+      login(localStorage.getItem("wr_token"), updatedUser);
+      toast.success("Perfil atualizado.");
+      setForm({ username: "", new_password: "", confirm_password: "", current_password: "" });
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erro ao salvar.");
+    } finally { setSaving(false); }
+  }
+
+  const inp = "w-full bg-gray-700 border border-gray-500 text-gray-100 placeholder-gray-400 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-400";
+
+  return (
+    <div className="bg-gray-800 border border-gray-600 rounded-lg p-5 space-y-5 max-w-xl">
+      <div>
+        <h2 className="text-sm font-semibold text-white">Dados da conta</h2>
+        <p className="text-xs text-gray-400 mt-0.5">
+          Conta atual: <span className="font-mono text-gray-200">{user?.username}</span>
+          {" "}&mdash; <span className="text-gray-500">{user?.email}</span>
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+
+        {/* Novo username */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-200 mb-1">Novo username (opcional)</label>
+          <input name="username" value={form.username} onChange={handleChange}
+            placeholder={user?.username || ""} className={inp} />
+          <p className="text-xs text-gray-400 mt-1">Letras, numeros, ponto e underscore. Min 3 caracteres.</p>
+        </div>
+
+        {/* Nova senha */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-200 mb-1">Nova senha (opcional)</label>
+          <div className="relative">
+            <input name="new_password" type={showPass ? "text" : "password"}
+              value={form.new_password} onChange={handleChange}
+              placeholder="Deixe vazio para nao alterar"
+              className={inp + " pr-16"} />
+            <button type="button" onClick={() => setShowPass((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-200">
+              {showPass ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
+        </div>
+
+        {/* Confirmar nova senha */}
+        {form.new_password && (
+          <div>
+            <label className="block text-xs font-semibold text-gray-200 mb-1">Confirmar nova senha</label>
+            <input name="confirm_password" type={showPass ? "text" : "password"}
+              value={form.confirm_password} onChange={handleChange}
+              placeholder="Repita a nova senha"
+              className={inp + (form.confirm_password && form.confirm_password !== form.new_password ? " border-red-500" : "")} />
+            {form.confirm_password && form.confirm_password !== form.new_password && (
+              <p className="text-xs text-red-400 mt-1">Senhas nao coincidem.</p>
+            )}
+          </div>
+        )}
+
+        {/* Senha atual — sempre obrigatoria */}
+        <div className="pt-2 border-t border-gray-700">
+          <label className="block text-xs font-semibold text-gray-200 mb-1">
+            Senha atual <span className="text-red-400">*</span>
+          </label>
+          <input name="current_password" type="password"
+            value={form.current_password} onChange={handleChange}
+            placeholder="Obrigatoria para confirmar qualquer alteracao"
+            className={inp} required />
+        </div>
+
+        <button type="submit" disabled={saving}
+          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded px-4 py-2 transition-colors">
+          {saving ? "Salvando..." : "Salvar alteracoes"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -240,6 +346,8 @@ export default function SettingsPage() {
   const [showToken, setShowToken]           = useState(false);
   const [clickupStatus, setClickupStatus]   = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [destinations, setDestinations]     = useState([]);
+  const [loadingDest, setLoadingDest]       = useState(false);
   const [username, setUsername]             = useState("");
   const fieldRefs = useRef({});
 
@@ -317,6 +425,22 @@ export default function SettingsPage() {
     }
   }
 
+  async function loadDestinations() {
+    try {
+      setLoadingDest(true);
+      setDestinations([]);
+      const res = await api.get("/clickup/destinations");
+      setDestinations(res.data.data.destinations || []);
+      if ((res.data.data.destinations || []).length === 0) {
+        toast("Nenhum space encontrado no workspace.", { icon: "ℹ️" });
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erro ao buscar destinos do ClickUp.");
+    } finally {
+      setLoadingDest(false);
+    }
+  }
+
   // Insere variavel na posicao do cursor no campo
   function insertVar(fieldKey, variable) {
     const el = fieldRefs.current[fieldKey];
@@ -353,7 +477,9 @@ export default function SettingsPage() {
       {/* Abas principais */}
       <div className="flex gap-1 mb-5 border-b border-gray-600">
         {[
+          { id: "conta",   label: "Conta"              },
           { id: "clickup", label: "Integracao ClickUp" },
+          { id: "azure",   label: "Azure DevOps"       },
           { id: "md",      label: "Relatorio .md"      },
         ].map((tab) => (
           <button
@@ -373,6 +499,9 @@ export default function SettingsPage() {
       <form onSubmit={handleSave}>
 
         {/* ═══ Aba ClickUp ══════════════════════════════════════════════════ */}
+        {/* Aba Conta */}
+        {activeTab === "conta" && <ProfileTab />}
+
         {activeTab === "clickup" && (
           <div className="bg-gray-800 border border-gray-600 rounded-lg p-5 space-y-5 max-w-xl">
             <div className="flex items-center justify-between">
@@ -425,6 +554,67 @@ export default function SettingsPage() {
               </div>
             ))}
 
+            {/* Destino dos Docs */}
+            <div className="border-t border-gray-700 pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-gray-200">Destino dos Docs</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {settings.clickup_doc_parent_id
+                      ? <span>Atual: <span className="font-mono text-gray-200">{settings.clickup_doc_parent_type} {settings.clickup_doc_parent_id}</span></span>
+                      : "Sem destino definido — Doc criado em Todos"}
+                  </p>
+                </div>
+                <button type="button" onClick={loadDestinations} disabled={loadingDest}
+                  className="text-xs bg-gray-700 hover:bg-gray-600 border border-gray-500 disabled:opacity-50 text-gray-100 rounded px-3 py-1.5 transition-colors shrink-0">
+                  {loadingDest ? "Carregando..." : "Selecionar destino"}
+                </button>
+              </div>
+
+              {destinations.length > 0 && (
+                <div className="bg-gray-900 border border-gray-600 rounded p-3 max-h-56 overflow-y-auto space-y-1 text-xs">
+                  <button type="button"
+                    onClick={() => setForm((p) => ({ ...p, clickup_doc_parent_id: "", clickup_doc_parent_type: "" }))}
+                    className={`w-full text-left px-2 py-1 rounded transition-colors ${!form.clickup_doc_parent_id ? "bg-blue-700 text-white" : "hover:bg-gray-700 text-gray-300"}`}>
+                    Todos (sem destino especifico)
+                  </button>
+                  {destinations.map((space) => (
+                    <div key={space.id}>
+                      <button type="button"
+                        onClick={() => setForm((p) => ({ ...p, clickup_doc_parent_id: space.id, clickup_doc_parent_type: "space" }))}
+                        className={`w-full text-left px-2 py-1 rounded font-semibold transition-colors ${form.clickup_doc_parent_id === space.id && form.clickup_doc_parent_type === "space" ? "bg-blue-700 text-white" : "hover:bg-gray-700 text-gray-100"}`}>
+                        Space: {space.name}
+                      </button>
+                      {space.children.map((child) => (
+                        <div key={child.id} className="ml-4">
+                          <button type="button"
+                            onClick={() => setForm((p) => ({ ...p, clickup_doc_parent_id: child.id, clickup_doc_parent_type: child.type }))}
+                            className={`w-full text-left px-2 py-1 rounded transition-colors ${form.clickup_doc_parent_id === child.id && form.clickup_doc_parent_type === child.type ? "bg-blue-700 text-white" : "hover:bg-gray-700 text-gray-400"}`}>
+                            {child.type === "folder" ? "Folder" : "List"}: {child.name}
+                          </button>
+                          {child.children?.map((list) => (
+                            <div key={list.id} className="ml-8">
+                              <button type="button"
+                                onClick={() => setForm((p) => ({ ...p, clickup_doc_parent_id: list.id, clickup_doc_parent_type: "list" }))}
+                                className={`w-full text-left px-2 py-1 rounded transition-colors ${form.clickup_doc_parent_id === list.id && form.clickup_doc_parent_type === "list" ? "bg-blue-700 text-white" : "hover:bg-gray-700 text-gray-500"}`}>
+                                List: {list.name}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {form.clickup_doc_parent_id && (
+                <p className="text-xs text-blue-300">
+                  Selecionado: {form.clickup_doc_parent_type} <span className="font-mono">{form.clickup_doc_parent_id}</span>
+                </p>
+              )}
+            </div>
+
             <div className="pt-1">
               <button type="submit" disabled={saving}
                 className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold rounded px-4 py-2.5 transition-colors">
@@ -435,6 +625,56 @@ export default function SettingsPage() {
         )}
 
         {/* ═══ Aba Relatorio .md ════════════════════════════════════════════ */}
+        {activeTab === "azure" && (
+          <div className="bg-gray-800 border border-gray-600 rounded-lg p-5 space-y-5 max-w-xl">
+            <div>
+              <h2 className="text-sm font-semibold text-white">Integracao Azure DevOps</h2>
+              <p className="text-xs text-gray-300 mt-0.5">
+                Quando configurado, habilita a busca do titulo do ticket ao informar o ID.
+                Cada usuario tem suas proprias credenciais.
+              </p>
+            </div>
+
+            {[
+              { key: "azure_devops_org",     label: "Organizacao",              placeholder: "appelsoft",                     sensitive: false, hint: "Nome da org na URL: dev.azure.com/SUA_ORG" },
+              { key: "azure_devops_project", label: "Projeto",                  placeholder: "Time Desktop - Desenvolvimento", sensitive: false, hint: "Nome exato do projeto no Azure DevOps." },
+              { key: "azure_devops_token",   label: "Personal Access Token",    placeholder: "Seu PAT Azure DevOps",          sensitive: true,  hint: "Permissao Work Items - Read. Gerado em dev.azure.com > User Settings > Personal Access Tokens." },
+            ].map((f) => (
+              <div key={f.key}>
+                <label className="block text-xs font-semibold text-gray-200 mb-1">{f.label}</label>
+                {settings[f.key] && (
+                  <p className="text-xs text-gray-400 font-mono bg-gray-700 border border-gray-600 rounded px-2 py-1 mb-1.5">
+                    Atual: {settings[f.key]}
+                  </p>
+                )}
+                <div className="relative">
+                  <input
+                    type={f.sensitive && !showToken ? "password" : "text"}
+                    value={form[f.key] || ""}
+                    onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                    placeholder={settings[f.key] ? "Deixe vazio para manter" : f.placeholder}
+                    className={`w-full bg-gray-700 border border-gray-500 text-gray-100 placeholder-gray-400 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-400 font-mono ${f.sensitive ? "pr-16" : ""}`}
+                  />
+                  {f.sensitive && (
+                    <button type="button" onClick={() => setShowToken((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-200">
+                      {showToken ? "Ocultar" : "Mostrar"}
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">{f.hint}</p>
+              </div>
+            ))}
+
+            <div className="pt-1">
+              <button type="submit" disabled={saving}
+                className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded px-4 py-2 transition-colors">
+                {saving ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {activeTab === "md" && (
           <div className="grid grid-cols-[190px_1fr] gap-5">
 

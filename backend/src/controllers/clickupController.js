@@ -27,14 +27,16 @@ const getDocStatus = asyncHandler(async (req, res) => {
 const sendReport = asyncHandler(async (req, res) => {
   const reportId = Number(req.params.id);
   const overwrite = req.body?.overwrite === true;
-
   const result = await clickupService.sendReportToClickUp(reportId, req.user.id, overwrite);
-
   const message = result.updated
     ? "Doc atualizado no ClickUp com sucesso."
     : "Relatorio enviado para o ClickUp com sucesso.";
-
   return success(res, { message, doc: result });
 });
 
-module.exports = { sendReport, checkStatus, getDocStatus };
+const listDestinations = asyncHandler(async (req, res) => {
+  const destinations = await clickupService.listDestinations(req.user.id);
+  return success(res, { destinations });
+});
+
+module.exports = { sendReport, checkStatus, getDocStatus, listDestinations };
