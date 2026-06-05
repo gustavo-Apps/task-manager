@@ -168,8 +168,6 @@ async function deleteTask(taskId, userId) {
   await task.destroy();
 }
 
-module.exports = { createTask, listTasks, getTask, updateTask, deleteTask };
-
 /**
  * Verifica se um azure_ticket_id ja existe em tasks com status "Pendente"
  * em qualquer semana do usuario.

@@ -32,8 +32,17 @@ export default function TaskFormPage() {
   const { activityTypes, taskStatuses, loading: loadingLookups } = useLookups();
   const [form, setForm]             = useState(EMPTY_FORM);
   const [loading, setLoading]       = useState(false);
-  const [ticketWarning, setTicketWarning] = useState(null); // { week_number, year }
+  const [ticketWarning, setTicketWarning] = useState(null);
+  const [azureConfigured, setAzureConfigured] = useState(false);
+  const [fetchingTitle, setFetchingTitle]     = useState(false);
   const ticketCheckTimeout = useRef(null);
+
+  // Verifica se Azure DevOps esta configurado para este usuario
+  useEffect(() => {
+    api.get("/azure/status")
+      .then((res) => setAzureConfigured(res.data.data.configured))
+      .catch(() => setAzureConfigured(false));
+  }, []);
 
   // Em modo edição, carrega os dados da tarefa existente
   useEffect(() => {
@@ -57,12 +66,31 @@ export default function TaskFormPage() {
       .catch(() => toast.error("Erro ao carregar tarefa."));
   }, [id, isEdit]);
 
-  // Preenche título automaticamente quando ticket Azure é informado
+  // Preenche titulo automaticamente quando ticket Azure e informado e titulo ainda esta vazio
+  // Se Azure configurado, nao faz nada aqui — usuario usa o botao de busca
   useEffect(() => {
-    if (form.azure_ticket_id.trim()) {
+    if (form.azure_ticket_id.trim() && !form.title.trim() && !azureConfigured) {
       setForm((prev) => ({ ...prev, title: "Testado Hoje" }));
     }
-  }, [form.azure_ticket_id]);
+  }, [form.azure_ticket_id, azureConfigured]);
+
+  // Busca o titulo do ticket no Azure DevOps
+  async function fetchAzureTitle() {
+    const ticketId = form.azure_ticket_id.trim();
+    if (!ticketId) return;
+    try {
+      setFetchingTitle(true);
+      const res = await api.get(`/azure/ticket/${encodeURIComponent(ticketId)}`);
+      const title = res.data.data.title;
+      setForm((prev) => ({ ...prev, title }));
+      toast.success(`Titulo carregado: ${title}`);
+    } catch (err) {
+      const msg = err.response?.data?.message || "Erro ao buscar titulo no Azure.";
+      toast.error(msg);
+    } finally {
+      setFetchingTitle(false);
+    }
+  }
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -147,20 +175,35 @@ export default function TaskFormPage() {
 
         {/* Ticket Azure */}
         <Field label="ID do Ticket Azure (opcional)">
-          <input
-            name="azure_ticket_id"
-            value={form.azure_ticket_id}
-            onChange={handleChange}
-            placeholder="ex: 2819"
-            className={inputCls}
-          />
+          <div className="flex gap-2">
+            <input
+              name="azure_ticket_id"
+              value={form.azure_ticket_id}
+              onChange={handleChange}
+              placeholder="ex: 2819"
+              className={inputCls + " flex-1"}
+            />
+            {azureConfigured && form.azure_ticket_id.trim() && (
+              <button
+                type="button"
+                onClick={fetchAzureTitle}
+                disabled={fetchingTitle}
+                className="shrink-0 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-medium rounded px-3 py-2 transition-colors"
+              >
+                {fetchingTitle ? "Buscando..." : "Buscar titulo"}
+              </button>
+            )}
+          </div>
           {ticketWarning && (
             <p className="text-xs text-yellow-400 mt-1">
               Ticket #{form.azure_ticket_id} ja existe com status "{ticketWarning.statusName}" na semana {ticketWarning.week_number}/{ticketWarning.year}. Ao salvar, sera solicitada confirmacao.
             </p>
           )}
-          {ticketPreenchido && !ticketWarning && (
+          {ticketPreenchido && !ticketWarning && !azureConfigured && (
             <p className="text-xs text-blue-400 mt-1">Titulo preenchido automaticamente: "Testado Hoje"</p>
+          )}
+          {ticketPreenchido && !ticketWarning && azureConfigured && (
+            <p className="text-xs text-gray-400 mt-1">Clique em "Buscar titulo" para puxar o nome do ticket do Azure DevOps.</p>
           )}
         </Field>
 
@@ -170,10 +213,16 @@ export default function TaskFormPage() {
             name="title"
             value={form.title}
             onChange={handleChange}
-            required={!ticketPreenchido}
-            disabled={ticketPreenchido}
-            placeholder={ticketPreenchido ? "Testado Hoje" : "Descricao resumida da atividade"}
-            className={inputCls + (ticketPreenchido ? " opacity-50 cursor-not-allowed" : "")}
+            required={!ticketPreenchido || azureConfigured}
+            disabled={ticketPreenchido && !azureConfigured}
+            placeholder={
+              ticketPreenchido && !azureConfigured
+                ? "Testado Hoje"
+                : ticketPreenchido && azureConfigured
+                ? "Use o botao acima para buscar ou digite manualmente"
+                : "Descricao resumida da atividade"
+            }
+            className={inputCls + (ticketPreenchido && !azureConfigured ? " opacity-50 cursor-not-allowed" : "")}
           />
         </Field>
 

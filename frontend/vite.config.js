@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
+    host: "0.0.0.0",
     // Proxy para a API — evita CORS em desenvolvimento
     proxy: {
       "/api": {

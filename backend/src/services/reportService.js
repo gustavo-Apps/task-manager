@@ -84,7 +84,7 @@ async function getReport(reportId, userId) {
         include: [{ model: ActivityType, as: "activityType" }, { model: TaskStatus, as: "taskStatus" }],
         order: [["task_date", "ASC"]],
       },
-      { model: User, as: "user", attributes: ["id", "username", "email"] },
+      { model: User, as: "user", attributes: ["id", "username", "email", "cargo"] },
     ],
   });
 
@@ -205,11 +205,11 @@ async function generateMarkdown(reportId, userId) {
 
   lines.push(`# ${prefs.reportTitle} — Semana ${report.week_number}/${report.year}`);
   lines.push("");
-  lines.push(`**Colaborador:** ${user.username}`);
-  lines.push(`**Período:** ${formatDatePtBR(report.start_date)} a ${formatDatePtBR(report.end_date)}`);
-  lines.push(`**Status:** ${report.status === "open" ? "Em andamento" : "Finalizado"}`);
-  lines.push(`**Gerado em:** ${ctx.generated_at}`);
-  if (prefs.headerExtra) { lines.push(""); lines.push(prefs.headerExtra); }
+  lines.push(`**Colaborador:** ${user.username}  `);
+  lines.push(`**Período:** ${formatDatePtBR(report.start_date)} a ${formatDatePtBR(report.end_date)}  `);
+  lines.push(`**Status:** ${report.status === "open" ? "Em andamento" : "Finalizado"}  `);
+  lines.push(`**Gerado em:** ${ctx.generated_at}  `);
+  if (prefs.headerExtra) { lines.push(""); prefs.headerExtra.split(/\r?\n/).forEach((l) => lines.push(l + "  ")); }
   lines.push("");
   lines.push("---");
   lines.push("");
@@ -249,7 +249,7 @@ async function generateMarkdown(reportId, userId) {
       lines.push("|--------|-----------|------|--------|");
       for (const task of ticketTasks) {
         const statusLabel = task.taskStatus?.name || "—";
-        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${task.task_date} | ${statusLabel} |`);
+        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${formatDatePtBR(task.task_date)} | ${statusLabel} |`);
       }
       lines.push("");
     }
@@ -334,10 +334,10 @@ async function generateMarkdownForPeriod(userId, dataInicio, dataFim) {
 
   lines.push(`# ${prefs.reportTitle} — Período`);
   lines.push("");
-  lines.push(`**Colaborador:** ${user.username}`);
-  lines.push(`**Período:** ${formatDatePtBR(dataInicio)} a ${formatDatePtBR(dataFim)}`);
-  lines.push(`**Gerado em:** ${ctx.generated_at}`);
-  if (prefs.headerExtra) { lines.push(""); lines.push(prefs.headerExtra); }
+  lines.push(`**Colaborador:** ${user.username}  `);
+  lines.push(`**Período:** ${formatDatePtBR(dataInicio)} a ${formatDatePtBR(dataFim)}  `);
+  lines.push(`**Gerado em:** ${ctx.generated_at}  `);
+  if (prefs.headerExtra) { lines.push(""); prefs.headerExtra.split(/\r?\n/).forEach((l) => lines.push(l + "  ")); }
   lines.push("");
   lines.push("---");
   lines.push("");
@@ -378,7 +378,7 @@ async function generateMarkdownForPeriod(userId, dataInicio, dataFim) {
       lines.push("|--------|-----------|------|--------|");
       for (const task of ticketTasks) {
         const statusLabel = task.taskStatus?.name || "—";
-        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${task.task_date} | ${statusLabel} |`);
+        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${formatDatePtBR(task.task_date)} | ${statusLabel} |`);
       }
       lines.push("");
     }

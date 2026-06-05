@@ -1,13 +1,5 @@
 /**
  * Service: Autenticação
- *
- * Contém a lógica de negócio de registro e login.
- * Controllers apenas delegam para cá — sem regras de negócio fora deste arquivo.
- *
- * Princípios aplicados:
- * - Senha sempre com bcrypt (custo 12 — bom equilíbrio entre segurança e desempenho)
- * - JWT carrega apenas dados não-sensíveis (sem senha, sem dados privados)
- * - Mensagem de erro genérica no login (não revela se o email existe)
  */
 
 const bcrypt = require("bcryptjs");
@@ -17,44 +9,25 @@ const AppError = require("../utils/AppError");
 
 const BCRYPT_SALT_ROUNDS = 12;
 
-/**
- * Registra um novo usuário.
- * @param {{ username, email, password, cargo }} data
- * @returns {Promise<User>} Usuário criado (sem password_hash)
- */
 async function register({ username, email, password, cargo }) {
-  // Verifica duplicatas antes de tentar inserir
   const existing = await User.unscoped().findOne({
     where: { email },
     attributes: ["id"],
   });
 
   if (existing) {
-    throw new AppError("Este email já está cadastrado.", 409);
+    throw new AppError("Este email ja esta cadastrado.", 409);
   }
 
   const password_hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-
   const user = await User.create({ username, email, password_hash, cargo });
-
-  // Retorna sem o hash — nunca exponha a senha
   return User.findByPk(user.id);
 }
 
-/**
- * Autentica um usuário e retorna um JWT.
- * @param {{ email, password }} data
- * @returns {Promise<{ token: string, user: User }>}
- */
 async function login({ email, password }) {
-  // unscoped() bypassa o defaultScope (que exclui password_hash),
-  // retornando todas as colunas incluindo o hash para comparação.
-  // Mais seguro que combinar scopes com exclude+include no Sequelize 6.
   const user = await User.unscoped().findOne({ where: { email } });
 
-  // Mensagem genérica intencional: não revela se o email existe no banco
-  const INVALID_CREDENTIALS = "Email ou senha inválidos.";
-
+  const INVALID_CREDENTIALS = "Email ou senha invalidos.";
   if (!user) throw new AppError(INVALID_CREDENTIALS, 401);
   if (!user.is_active) throw new AppError("Conta desativada.", 403);
 
@@ -62,19 +35,51 @@ async function login({ email, password }) {
   if (!passwordMatch) throw new AppError(INVALID_CREDENTIALS, 401);
 
   const token = jwt.sign(
-    {
-      sub: user.id,         // "sub" é o campo padrão JWT para o ID do sujeito
-      username: user.username,
-      email: user.email,
-      role: user.role,
-    },
+    { sub: user.id, username: user.username, email: user.email, role: user.role, cargo: user.cargo },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
   );
 
-  // Retorna o usuário sem o hash
   const userPublic = await User.findByPk(user.id);
   return { token, user: userPublic };
 }
 
-module.exports = { register, login };
+/**
+ * Atualiza username e/ou senha do usuario autenticado.
+ * Exige a senha atual para qualquer alteracao.
+ *
+ * @param {number} userId
+ * @param {{ current_password, username?, new_password? }} data
+ */
+async function updateProfile(userId, { current_password, username, new_password }) {
+  const user = await User.unscoped().findByPk(userId);
+  if (!user) throw new AppError("Usuario nao encontrado.", 404);
+
+  // Valida senha atual sempre — nunca permite mudanca sem autenticacao
+  const valid = await bcrypt.compare(current_password, user.password_hash);
+  if (!valid) throw new AppError("Senha atual incorreta.", 401);
+
+  const updates = {};
+
+  if (username && username !== user.username) {
+    // Garante unicidade
+    const taken = await User.unscoped().findOne({ where: { username }, attributes: ["id"] });
+    if (taken && taken.id !== userId) throw new AppError("Username ja esta em uso.", 409);
+    updates.username = username;
+  }
+
+  if (new_password) {
+    updates.password_hash = await bcrypt.hash(new_password, BCRYPT_SALT_ROUNDS);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new AppError("Nenhuma alteracao informada.", 400);
+  }
+
+  await User.update(updates, { where: { id: userId } });
+
+  // Retorna usuario atualizado (sem hash)
+  return User.findByPk(userId);
+}
+
+module.exports = { register, login, updateProfile };

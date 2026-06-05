@@ -21,15 +21,17 @@ const CLICKUP_V3 = "https://api.clickup.com/api/v3";
  * @param {number} userId
  */
 async function getClickUpConfig(userId) {
-  const [token, workspaceId] = await Promise.all([
+  const [token, workspaceId, parentId, parentType] = await Promise.all([
     settingsService.getValue(userId, "clickup_api_token"),
     settingsService.getValue(userId, "clickup_workspace_id"),
+    settingsService.getValue(userId, "clickup_doc_parent_id"),
+    settingsService.getValue(userId, "clickup_doc_parent_type"),
   ]);
 
   if (!token)       throw new AppError("ClickUp API Token nao configurado. Configure em Configuracoes.", 422);
   if (!workspaceId) throw new AppError("ClickUp Workspace ID nao configurado. Configure em Configuracoes.", 422);
 
-  return { token, workspaceId };
+  return { token, workspaceId, parentId: parentId || null, parentType: parentType || null };
 }
 
 /**
@@ -60,7 +62,7 @@ async function getReportClickUpStatus(reportId, userId) {
  * @returns {Promise<{ docId: string, docUrl: string, docName: string, updated: boolean }>}
  */
 async function sendReportToClickUp(reportId, userId, overwrite = false) {
-  const { token, workspaceId } = await getClickUpConfig(userId);
+  const { token, workspaceId, parentId, parentType } = await getClickUpConfig(userId);
 
   const report = await reportService.getReport(reportId, userId);
   const markdown = buildMarkdown(report);
@@ -72,25 +74,26 @@ async function sendReportToClickUp(reportId, userId, overwrite = false) {
   let updated = false;
 
   if (overwrite && report.clickup_doc_id) {
-    // --- Atualiza Doc existente ---
     docId   = report.clickup_doc_id;
     docUrl  = report.clickup_doc_url;
     updated = true;
-
     await upsertDocPage(token, workspaceId, docId, docName, markdown);
-
   } else {
-    // --- Cria novo Doc ---
+    // Monta o body — inclui parent se configurado
+    const createBody = { name: docName, create_page: true };
+    if (parentId && parentType) {
+      createBody.parent = { id: parentId, type: parentType };
+    }
+
     const docRes = await fetchClickUp(
       `${CLICKUP_V3}/workspaces/${workspaceId}/docs`,
       token,
       "POST",
-      { name: docName, create_page: true }
+      createBody
     );
 
     docId  = docRes.id;
     docUrl = docRes.url || `https://app.clickup.com/${workspaceId}/docs/${docId}`;
-
     await upsertDocPage(token, workspaceId, docId, docName, markdown);
   }
 
@@ -284,4 +287,55 @@ function formatDatePtBR(dateStr) {
   return `${Number(d)} de ${months[Number(m) - 1]} de ${y}`;
 }
 
-module.exports = { sendReportToClickUp, getClickUpConfig, getReportClickUpStatus };
+/**
+ * Lista spaces do workspace, com folders e lists aninhados.
+ * Retorna estrutura simples para o frontend montar o seletor de destino.
+ *
+ * @param {number} userId
+ * @returns {Promise<Array<{ id, name, type, children }>>}
+ */
+async function listDestinations(userId) {
+  const { token, workspaceId } = await getClickUpConfig(userId);
+
+  // Busca todos os spaces do workspace
+  const spacesRes = await fetchClickUp(
+    `https://api.clickup.com/api/v2/team/${workspaceId}/space?archived=false`,
+    token
+  );
+
+  const spaces = spacesRes.spaces || [];
+
+  // Para cada space, busca folders e lists raiz em paralelo
+  const result = await Promise.all(
+    spaces.map(async (space) => {
+      const [foldersRes, listsRes] = await Promise.all([
+        fetchClickUp(`https://api.clickup.com/api/v2/space/${space.id}/folder?archived=false`, token),
+        fetchClickUp(`https://api.clickup.com/api/v2/space/${space.id}/list?archived=false`,  token),
+      ]);
+
+      const folders = (foldersRes.folders || []).map((f) => ({
+        id:   f.id,
+        name: f.name,
+        type: "folder",
+        children: (f.lists || []).map((l) => ({ id: l.id, name: l.name, type: "list" })),
+      }));
+
+      const lists = (listsRes.lists || []).map((l) => ({
+        id:   l.id,
+        name: l.name,
+        type: "list",
+      }));
+
+      return {
+        id:       space.id,
+        name:     space.name,
+        type:     "space",
+        children: [...folders, ...lists],
+      };
+    })
+  );
+
+  return result;
+}
+
+module.exports = { sendReportToClickUp, getClickUpConfig, getReportClickUpStatus, listDestinations };

@@ -13,26 +13,24 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Injeta o token em todas as requisições autenticadas
+// Injeta o token em todas as requisicoes autenticadas
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("wr_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Se o backend retornar 401 em rotas protegidas, limpa a sessão e redireciona.
-// Rotas de /auth/* (login, register) NÃO disparam o redirect — o erro
-// deve chegar ao catch do componente para exibir feedback ao usuário.
+// Se o backend retornar 401 em rotas protegidas, limpa a sessao e redireciona.
+// Rotas de /auth/* (login, register) NAO disparam o redirect.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const isAuthRoute = error.config?.url?.startsWith("/auth/");
     if (error.response?.status === 401 && !isAuthRoute) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      // Usa replace para não empilhar /login no histórico
+      localStorage.removeItem("wr_token");
+      localStorage.removeItem("wr_user");
       window.location.replace("/login");
     }
     return Promise.reject(error);
