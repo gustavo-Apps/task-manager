@@ -144,7 +144,7 @@ export default function DashboardPage() {
           <h1 className="text-xl font-bold text-white">Dashboard</h1>
           {!loading && report && (
             <p className="text-sm text-gray-300 mt-1">
-              Semana {report.week_number}/{report.year} &mdash; {report.start_date} ate {report.end_date}
+              Semana {report.week_number}/{report.year} — {report.start_date} ate {report.end_date}
               <span
                 className={`ml-3 px-2 py-0.5 rounded text-xs font-medium ${
                   report.status === "open"
@@ -166,7 +166,7 @@ export default function DashboardPage() {
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors shadow-lg"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 8l-3-3m3 3l3-3" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 4v8m0 0l-3 3m3-3l3 3" />
             </svg>
             {generating ? "Gerando..." : "Gerar Relatorio .md"}
           </button>

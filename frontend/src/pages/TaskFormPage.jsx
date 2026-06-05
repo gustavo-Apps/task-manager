@@ -57,9 +57,9 @@ export default function TaskFormPage() {
       .catch(() => toast.error("Erro ao carregar tarefa."));
   }, [id, isEdit]);
 
-  // Preenche título automaticamente quando ticket Azure é informado
+  // Preenche título automaticamente quando ticket Azure é informado e título ainda está vazio
   useEffect(() => {
-    if (form.azure_ticket_id.trim()) {
+    if (form.azure_ticket_id.trim() && !form.title.trim()) {
       setForm((prev) => ({ ...prev, title: "Testado Hoje" }));
     }
   }, [form.azure_ticket_id]);

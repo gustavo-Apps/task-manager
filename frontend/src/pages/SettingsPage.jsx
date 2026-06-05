@@ -143,11 +143,11 @@ function MdPreview({ values, username }) {
   return (
     <div className="bg-gray-900 border border-gray-600 rounded-lg p-4 font-mono text-xs leading-relaxed overflow-x-auto select-text">
       <p className="text-blue-300 font-bold"># {title} — Semana 23/2026</p>
-      <p className="text-gray-300 mt-1">&gt; **Colaborador:** {username || "gustavo.rg"}</p>
-      <p className="text-gray-300">&gt; **Periodo:** 02/06/2026 a 06/06/2026</p>
-      <p className="text-gray-300">&gt; **Gerado em:** {new Date().toLocaleString("pt-BR")}</p>
+      <p className="text-gray-300 mt-1"><span className="text-gray-500">**Colaborador:**</span> {username || "gustavo.rg"}</p>
+      <p className="text-gray-300"><span className="text-gray-500">**Periodo:**</span> 02/06/2026 a 06/06/2026</p>
+      <p className="text-gray-300"><span className="text-gray-500">**Gerado em:**</span> {new Date().toLocaleString("pt-BR")}</p>
       {headerExtra && headerExtra.split(/\r?\n/).map((line, i) => (
-        <p key={i} className="text-yellow-300 mt-1">&gt; {line}</p>
+        <p key={i} className="text-yellow-300 mt-1">{line}</p>
       ))}
       <p className="text-gray-500 mt-2">---</p>
       <p className="text-green-300 mt-2 font-bold">## {activityTitle}</p>
@@ -279,7 +279,7 @@ export default function SettingsPage() {
     e.preventDefault();
     const updates = {};
     for (const [key, value] of Object.entries(form)) {
-      if (value.trim() !== "") updates[key] = value.trim();
+      if (value.trim() !== "") updates[key] = value.trimEnd();
     }
     if (Object.keys(updates).length === 0) {
       toast("Nenhum campo alterado.", { icon: "ℹ️" });

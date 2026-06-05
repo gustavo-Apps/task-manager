@@ -3,12 +3,15 @@ import api from "../lib/api";
 
 const AuthContext = createContext(null);
 
+const USER_KEY = "wr_user";
+const TOKEN_KEY = "wr_token";
+
 export function AuthProvider({ children }) {
   const [user, setUser]   = useState(() => {
-    const stored = localStorage.getItem("user");
+    const stored = localStorage.getItem(USER_KEY);
     return stored ? JSON.parse(stored) : null;
   });
-  const [token, setToken] = useState(() => localStorage.getItem("token"));
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,15 +27,15 @@ export function AuthProvider({ children }) {
   }, []);
 
   function login(tokenValue, userData) {
-    localStorage.setItem("token", tokenValue);
-    localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem(TOKEN_KEY, tokenValue);
+    localStorage.setItem(USER_KEY, JSON.stringify(userData));
     setToken(tokenValue);
     setUser(userData);
   }
 
   function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     setToken(null);
     setUser(null);
   }

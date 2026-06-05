@@ -84,7 +84,7 @@ async function getReport(reportId, userId) {
         include: [{ model: ActivityType, as: "activityType" }, { model: TaskStatus, as: "taskStatus" }],
         order: [["task_date", "ASC"]],
       },
-      { model: User, as: "user", attributes: ["id", "username", "email"] },
+      { model: User, as: "user", attributes: ["id", "username", "email", "cargo"] },
     ],
   });
 
@@ -249,7 +249,7 @@ async function generateMarkdown(reportId, userId) {
       lines.push("|--------|-----------|------|--------|");
       for (const task of ticketTasks) {
         const statusLabel = task.taskStatus?.name || "—";
-        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${task.task_date} | ${statusLabel} |`);
+        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${formatDatePtBR(task.task_date)} | ${statusLabel} |`);
       }
       lines.push("");
     }
@@ -378,7 +378,7 @@ async function generateMarkdownForPeriod(userId, dataInicio, dataFim) {
       lines.push("|--------|-----------|------|--------|");
       for (const task of ticketTasks) {
         const statusLabel = task.taskStatus?.name || "—";
-        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${task.task_date} | ${statusLabel} |`);
+        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${formatDatePtBR(task.task_date)} | ${statusLabel} |`);
       }
       lines.push("");
     }
