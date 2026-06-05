@@ -45,6 +45,8 @@ export default function DashboardPage() {
   const dateParam    = searchParams.get("date")   || "";
   const statusFilter = searchParams.get("status") || "";
   const search       = searchParams.get("q")      || "";
+  const sortCol      = searchParams.get("sort")   || "task_date";
+  const sortDir      = searchParams.get("dir")    || "asc";
 
   function setPreset(value) {
     setSearchParams((p) => { p.set("preset", value); if (value !== "custom") p.delete("date"); return p; }, { replace: true });
@@ -57,6 +59,32 @@ export default function DashboardPage() {
   }
   function setSearch(value) {
     setSearchParams((p) => { value ? p.set("q", value) : p.delete("q"); return p; }, { replace: true });
+  }
+  function handleSort(col) {
+    setSearchParams((p) => {
+      if (p.get("sort") === col) {
+        p.set("dir", p.get("dir") === "asc" ? "desc" : "asc");
+      } else {
+        p.set("sort", col);
+        p.set("dir", "asc");
+      }
+      return p;
+    }, { replace: true });
+  }
+  function SortBtn({ col, label }) {
+    const active = sortCol === col;
+    return (
+      <button
+        onClick={() => handleSort(col)}
+        className={`px-3 py-1.5 rounded text-xs font-medium transition-colors select-none ${
+          active
+            ? "bg-gray-600 text-white"
+            : "bg-gray-700 text-gray-400 hover:text-white hover:bg-gray-600"
+        }`}
+      >
+        {label} {active ? (sortDir === "asc" ? "▲" : "▼") : ""}
+      </button>
+    );
   }
 
   const [report, setReport]   = useState(null);
@@ -150,6 +178,32 @@ export default function DashboardPage() {
     }
   }
 
+  function getSortedTasks(tasks) {
+    return [...tasks].sort((a, b) => {
+      let aVal, bVal;
+      if (sortCol === "task_date") {
+        aVal = a.task_date ?? "";
+        bVal = b.task_date ?? "";
+      } else if (sortCol === "azure_ticket_id") {
+        if (!a.azure_ticket_id && !b.azure_ticket_id) return 0;
+        if (!a.azure_ticket_id) return 1;
+        if (!b.azure_ticket_id) return -1;
+        aVal = a.azure_ticket_id;
+        bVal = b.azure_ticket_id;
+      } else if (sortCol === "tipo") {
+        aVal = a.activityType?.name ?? "";
+        bVal = b.activityType?.name ?? "";
+      } else if (sortCol === "status") {
+        aVal = a.taskStatus?.name ?? "";
+        bVal = b.taskStatus?.name ?? "";
+      } else {
+        return 0;
+      }
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }
+
   const filteredTasks = report?.tasks?.filter((task) => {
     const matchStatus = statusFilter ? task.taskStatus?.id === Number(statusFilter) : true;
     const q = search.trim().toLowerCase();
@@ -160,6 +214,8 @@ export default function DashboardPage() {
       : true;
     return matchStatus && matchSearch;
   }) ?? [];
+
+  const sortedTasks = getSortedTasks(filteredTasks);
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -296,7 +352,15 @@ export default function DashboardPage() {
         </div>
       ) : !loading ? (
         <div className="space-y-2">
-          {filteredTasks.map((task) => (
+          {/* Barra de ordenacao */}
+          <div className="flex items-center gap-1.5 pb-1">
+            <span className="text-xs text-gray-500 mr-1">Ordenar:</span>
+            <SortBtn col="task_date" label="Data" />
+            <SortBtn col="tipo" label="Tipo" />
+            <SortBtn col="status" label="Status" />
+            <SortBtn col="azure_ticket_id" label="Ticket" />
+          </div>
+          {sortedTasks.map((task) => (
             <div
               key={task.id}
               className="bg-gray-700 border border-gray-500 hover:border-gray-600 rounded-lg px-4 py-3 flex items-start justify-between gap-4 transition-colors"
