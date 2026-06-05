@@ -229,111 +229,6 @@ function FullVarReference() {
   );
 }
 
-// ─── Aba Conta ─────────────────────────────────────────────────────────────────
-
-function ProfileTab() {
-  const { user, login } = useAuth();
-  const [form, setForm] = useState({ username: "", new_password: "", confirm_password: "", current_password: "" });
-  const [saving, setSaving] = useState(false);
-  const [showPass, setShowPass] = useState(false);
-
-  function handleChange(e) {
-    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (form.new_password && form.new_password !== form.confirm_password) {
-      toast.error("Nova senha e confirmacao nao coincidem."); return;
-    }
-    if (!form.current_password) { toast.error("Informe a senha atual."); return; }
-    const payload = { current_password: form.current_password };
-    if (form.username.trim())     payload.username     = form.username.trim();
-    if (form.new_password.trim()) payload.new_password = form.new_password.trim();
-    if (!payload.username && !payload.new_password) { toast("Nenhuma alteracao informada.", { icon: "ℹ️" }); return; }
-    try {
-      setSaving(true);
-      const res = await api.patch("/auth/profile", payload);
-      const updatedUser = res.data.data.user;
-      login(localStorage.getItem("wr_token"), updatedUser);
-      toast.success("Perfil atualizado.");
-      setForm({ username: "", new_password: "", confirm_password: "", current_password: "" });
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Erro ao salvar.");
-    } finally { setSaving(false); }
-  }
-
-  const inp = "w-full bg-gray-700 border border-gray-500 text-gray-100 placeholder-gray-400 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-400";
-
-  return (
-    <div className="bg-gray-800 border border-gray-600 rounded-lg p-5 space-y-5 max-w-xl">
-      <div>
-        <h2 className="text-sm font-semibold text-white">Dados da conta</h2>
-        <p className="text-xs text-gray-400 mt-0.5">
-          Conta atual: <span className="font-mono text-gray-200">{user?.username}</span>
-          {" "}&mdash; <span className="text-gray-500">{user?.email}</span>
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-
-        {/* Novo username */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-200 mb-1">Novo username (opcional)</label>
-          <input name="username" value={form.username} onChange={handleChange}
-            placeholder={user?.username || ""} className={inp} />
-          <p className="text-xs text-gray-400 mt-1">Letras, numeros, ponto e underscore. Min 3 caracteres.</p>
-        </div>
-
-        {/* Nova senha */}
-        <div>
-          <label className="block text-xs font-semibold text-gray-200 mb-1">Nova senha (opcional)</label>
-          <div className="relative">
-            <input name="new_password" type={showPass ? "text" : "password"}
-              value={form.new_password} onChange={handleChange}
-              placeholder="Deixe vazio para nao alterar"
-              className={inp + " pr-16"} />
-            <button type="button" onClick={() => setShowPass((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-200">
-              {showPass ? "Ocultar" : "Mostrar"}
-            </button>
-          </div>
-        </div>
-
-        {/* Confirmar nova senha */}
-        {form.new_password && (
-          <div>
-            <label className="block text-xs font-semibold text-gray-200 mb-1">Confirmar nova senha</label>
-            <input name="confirm_password" type={showPass ? "text" : "password"}
-              value={form.confirm_password} onChange={handleChange}
-              placeholder="Repita a nova senha"
-              className={inp + (form.confirm_password && form.confirm_password !== form.new_password ? " border-red-500" : "")} />
-            {form.confirm_password && form.confirm_password !== form.new_password && (
-              <p className="text-xs text-red-400 mt-1">Senhas nao coincidem.</p>
-            )}
-          </div>
-        )}
-
-        {/* Senha atual — sempre obrigatoria */}
-        <div className="pt-2 border-t border-gray-700">
-          <label className="block text-xs font-semibold text-gray-200 mb-1">
-            Senha atual <span className="text-red-400">*</span>
-          </label>
-          <input name="current_password" type="password"
-            value={form.current_password} onChange={handleChange}
-            placeholder="Obrigatoria para confirmar qualquer alteracao"
-            className={inp} required />
-        </div>
-
-        <button type="submit" disabled={saving}
-          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded px-4 py-2 transition-colors">
-          {saving ? "Salvando..." : "Salvar alteracoes"}
-        </button>
-      </form>
-    </div>
-  );
-}
-
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -477,7 +372,6 @@ export default function SettingsPage() {
       {/* Abas principais */}
       <div className="flex gap-1 mb-5 border-b border-gray-600">
         {[
-          { id: "conta",   label: "Conta"              },
           { id: "clickup", label: "Integracao ClickUp" },
           { id: "azure",   label: "Azure DevOps"       },
           { id: "md",      label: "Relatorio .md"      },
@@ -499,8 +393,6 @@ export default function SettingsPage() {
       <form onSubmit={handleSave}>
 
         {/* ═══ Aba ClickUp ══════════════════════════════════════════════════ */}
-        {/* Aba Conta */}
-        {activeTab === "conta" && <ProfileTab />}
 
         {activeTab === "clickup" && (
           <div className="bg-gray-800 border border-gray-600 rounded-lg p-5 space-y-5 max-w-xl">
