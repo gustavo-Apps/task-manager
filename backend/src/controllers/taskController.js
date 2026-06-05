@@ -55,16 +55,40 @@ const checkTicket = asyncHandler(async (req, res) => {
 });
 
 /**
- * GET /api/tasks/tickets?from=YYYY-MM-DD&to=YYYY-MM-DD
- * Lista tickets testados (azure_ticket_id preenchido) no intervalo.
+ * GET /api/tasks/tickets?from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&limit=20
+ * Lista tickets testados (azure_ticket_id preenchido) no intervalo, com paginação.
  */
 const listTickets = asyncHandler(async (req, res) => {
   const { from, to } = req.query;
   if (!from || !to) throw new AppError("from e to sao obrigatorios.", 400);
 
-  const tickets = await taskService.listTickets(req.user.id, from, to);
-  
-  return success(res, { tickets });
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit, 10) || 20);
+
+  const result = await taskService.listTickets(req.user.id, from, to, { page, limit });
+
+  return success(res, result);
 });
 
-module.exports = { create, list, getOne, update, remove, checkTicket, listTickets };
+/**
+ * PATCH /api/tasks/:id/status
+ * Toggle rápido de status — lê task_status_id do body e atualiza.
+ */
+const patchStatus = asyncHandler(async (req, res) => {
+  const { task_status_id } = req.body;
+  if (!task_status_id) throw new AppError("task_status_id e obrigatorio.", 400);
+
+  const task = await taskService.updateTask(Number(req.params.id), req.user.id, { task_status_id });
+  return success(res, { task });
+});
+
+/**
+ * POST /api/tasks/:id/duplicate
+ * Duplica a task, ajustando task_date para hoje e zerando task_end_date.
+ */
+const duplicate = asyncHandler(async (req, res) => {
+  const task = await taskService.duplicateTask(Number(req.params.id), req.user.id);
+  return created(res, { task });
+});
+
+module.exports = { create, list, getOne, update, remove, checkTicket, listTickets, patchStatus, duplicate };

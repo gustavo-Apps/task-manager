@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import api from "../lib/api";
 import toast from "react-hot-toast";
 import Badge from "../components/Badge";
@@ -41,6 +42,8 @@ export default function TicketsPage() {
   const [tickets, setTickets]   = useState([]);
   const [loading, setLoading]   = useState(false);
   const [searched, setSearched] = useState(false);
+  const [sortCol, setSortCol]   = useState("task_date");
+  const [sortDir, setSortDir]   = useState("asc");
 
   useEffect(() => {
     if (preset !== "custom") {
@@ -67,6 +70,42 @@ export default function TicketsPage() {
     if (preset !== "custom") fetchTickets();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range]);
+
+
+  function handleSort(col) {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  }
+
+  function getSortedTickets() {
+    return [...tickets].sort((a, b) => {
+      let aVal, bVal;
+      if (sortCol === "task_date") {
+        aVal = a.task_date ?? "";
+        bVal = b.task_date ?? "";
+      } else if (sortCol === "azure_ticket_id") {
+        if (!a.azure_ticket_id && !b.azure_ticket_id) return 0;
+        if (!a.azure_ticket_id) return 1;
+        if (!b.azure_ticket_id) return -1;
+        aVal = a.azure_ticket_id;
+        bVal = b.azure_ticket_id;
+      } else if (sortCol === "tipo") {
+        aVal = a.activityType?.name ?? "";
+        bVal = b.activityType?.name ?? "";
+      } else if (sortCol === "status") {
+        aVal = a.taskStatus?.name ?? "";
+        bVal = b.taskStatus?.name ?? "";
+      } else {
+        return 0;
+      }
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }
 
   return (
     <div className="max-w-5xl">
@@ -149,18 +188,38 @@ export default function TicketsPage() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-gray-600 bg-gray-700/80 text-gray-300 text-left">
-                <th className="px-4 py-3 font-semibold">Ticket</th>
+                <th
+                  className="px-4 py-3 font-semibold cursor-pointer hover:text-white select-none"
+                  onClick={() => handleSort("azure_ticket_id")}
+                >
+                  Ticket {sortCol === "azure_ticket_id" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                </th>
                 <th className="px-4 py-3 font-semibold">Titulo</th>
-                <th className="px-4 py-3 font-semibold">Data</th>
-                <th className="px-4 py-3 font-semibold">Tipo</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
+                <th
+                  className="px-4 py-3 font-semibold cursor-pointer hover:text-white select-none"
+                  onClick={() => handleSort("task_date")}
+                >
+                  Data {sortCol === "task_date" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                </th>
+                <th
+                  className="px-4 py-3 font-semibold cursor-pointer hover:text-white select-none"
+                  onClick={() => handleSort("tipo")}
+                >
+                  Tipo {sortCol === "tipo" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                </th>
+                <th
+                  className="px-4 py-3 font-semibold cursor-pointer hover:text-white select-none"
+                  onClick={() => handleSort("status")}
+                >
+                  Status {sortCol === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                </th>
                 <th className="px-4 py-3 font-semibold">Semana</th>
                 <th className="px-4 py-3 font-semibold">Discord</th>
                 <th className="px-4 py-3 font-semibold">Acoes</th>
               </tr>
             </thead>
             <tbody>
-              {tickets.map((ticket, idx) => (
+              {getSortedTickets().map((ticket, idx) => (
                 <tr
                   key={ticket.id}
                   className={`border-b border-gray-600 last:border-0 hover:bg-gray-600/40 transition-colors ${
@@ -219,10 +278,10 @@ export default function TicketsPage() {
                     ) : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <a href={`/tasks/${ticket.id}/edit`}
+                    <Link to={`/tasks/${ticket.id}/edit`}
                       className="text-gray-300 hover:text-white transition-colors">
                       Editar
-                    </a>
+                    </Link>
                   </td>
                 </tr>
               ))}
@@ -230,6 +289,7 @@ export default function TicketsPage() {
           </table>
         </div>
       )}
+
     </div>
   );
 }

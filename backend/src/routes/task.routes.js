@@ -24,6 +24,8 @@ router.get("/tickets",      taskController.listTickets);
 router.post("/",    validate(createTaskSchema), taskController.create);
 router.get("/",     taskController.list);
 router.get("/:id",  taskController.getOne);
+router.patch("/:id/status", taskController.patchStatus);
+router.post("/:id/duplicate", taskController.duplicate);
 router.patch("/:id", validate(updateTaskSchema), taskController.update);
 router.delete("/:id", taskController.remove);
 

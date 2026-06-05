@@ -113,7 +113,7 @@ export default function TaskFormPage() {
         await api.post("/tasks", payload);
         toast.success("Tarefa criada.");
       }
-      navigate("/");
+      navigate(-1);
     } catch (err) {
       const msg = err.response?.data?.message || "Erro ao salvar tarefa.";
       toast.error(msg);
@@ -127,7 +127,7 @@ export default function TaskFormPage() {
     try {
       await api.delete(`/tasks/${id}`);
       toast.success("Tarefa removida.");
-      navigate("/");
+      navigate(-1);
     } catch {
       toast.error("Erro ao remover tarefa.");
     }

@@ -122,6 +122,34 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleStatusChange(taskId, value) {
+    try {
+      const res = await api.patch(`/tasks/${taskId}/status`, { task_status_id: Number(value) });
+      const updated = res?.data?.data?.task;
+      setReport((prev) => ({
+        ...prev,
+        tasks: prev.tasks.map((t) => (t.id === taskId ? updated : t)),
+      }));
+      toast.success("Status atualizado.");
+    } catch {
+      toast.error("Erro ao atualizar status.");
+    }
+  }
+
+  async function handleDuplicateTask(taskId) {
+    try {
+      const res = await api.post(`/tasks/${taskId}/duplicate`);
+      const newTask = res?.data?.data?.task;
+      setReport((prev) => ({
+        ...prev,
+        tasks: [...prev.tasks, newTask],
+      }));
+      toast.success("Tarefa duplicada.");
+    } catch {
+      toast.error("Erro ao duplicar tarefa.");
+    }
+  }
+
   const filteredTasks = report?.tasks?.filter((task) => {
     const matchStatus = statusFilter ? task.taskStatus?.id === Number(statusFilter) : true;
     const q = search.trim().toLowerCase();
@@ -287,9 +315,15 @@ export default function DashboardPage() {
                   {task.activityType && (
                     <Badge label={task.activityType.name} color={task.activityType.color} />
                   )}
-                  {task.taskStatus && (
-                    <Badge label={task.taskStatus.name} color={task.taskStatus.color} />
-                  )}
+                  <select
+                    value={task.taskStatus?.id ?? ""}
+                    onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                    className="text-xs bg-gray-700 border border-gray-500 rounded text-gray-100 px-1 py-0.5 focus:outline-none focus:border-blue-500"
+                  >
+                    {taskStatuses.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
                 </div>
                 {task.description && (
                   <p className="text-xs text-gray-300 mt-1.5 line-clamp-1">{task.description}</p>
@@ -303,6 +337,12 @@ export default function DashboardPage() {
                 >
                   Editar
                 </Link>
+                <button
+                  onClick={() => handleDuplicateTask(task.id)}
+                  className="text-xs text-gray-300 hover:text-white transition-colors"
+                >
+                  Duplicar
+                </button>
                 <button
                   onClick={() => handleDeleteTask(task.id)}
                   className="text-xs text-red-400 hover:text-red-300 transition-colors"
