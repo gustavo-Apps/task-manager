@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Pagina: Configuracoes
  * Abas: ClickUp | Relatorio .md
  */
@@ -369,7 +369,7 @@ export default function SettingsPage() {
       for (const s of res.data.data.settings) map[s.key] = s.value || "";
       setSettings(map);
       const emptyForm = {};
-      for (const k of Object.keys(map)) emptyForm[k] = "";
+      for (const k of Object.keys(map)) emptyForm[k] = null;
       setForm(emptyForm);
     } catch {
       toast.error("Erro ao carregar configuracoes.");
@@ -380,14 +380,14 @@ export default function SettingsPage() {
 
   const previewValues = { ...settings };
   for (const [k, v] of Object.entries(form)) {
-    if (v.trim() !== "") previewValues[k] = v.trim();
+    if (v !== null) previewValues[k] = typeof v === "string" ? v.trim() : v;
   }
 
   async function handleSave(e) {
     e.preventDefault();
     const updates = {};
     for (const [key, value] of Object.entries(form)) {
-      if (value.trim() !== "") updates[key] = value.trimEnd();
+      if (value !== null) updates[key] = typeof value === "string" ? value.trimEnd() : value;
     }
     if (Object.keys(updates).length === 0) {
       toast("Nenhum campo alterado.", { icon: "ℹ️" });
@@ -400,7 +400,7 @@ export default function SettingsPage() {
       for (const s of res.data.data.settings) map[s.key] = s.value || "";
       setSettings(map);
       const emptyForm = {};
-      for (const k of Object.keys(map)) emptyForm[k] = "";
+      for (const k of Object.keys(map)) emptyForm[k] = null;
       setForm(emptyForm);
       toast.success("Configuracoes salvas.");
     } catch (err) {
@@ -723,7 +723,7 @@ export default function SettingsPage() {
                       <textarea
                         ref={(el) => { fieldRefs.current[field.key] = el; }}
                         rows={3}
-                        value={form[field.key] !== undefined && form[field.key] !== "" ? form[field.key] : (settings[field.key] || "")}
+                        value={form[field.key] !== null ? form[field.key] : (settings[field.key] || "")}
                         onChange={(e) => setForm((p) => ({ ...p, [field.key]: e.target.value }))}
                         placeholder={field.placeholder}
                         className="w-full bg-gray-700 border border-gray-500 text-gray-100 placeholder-gray-400 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-400 resize-y font-mono"
@@ -732,7 +732,7 @@ export default function SettingsPage() {
                       <input
                         ref={(el) => { fieldRefs.current[field.key] = el; }}
                         type="text"
-                        value={form[field.key] !== undefined && form[field.key] !== "" ? form[field.key] : (settings[field.key] || "")}
+                        value={form[field.key] !== null ? form[field.key] : (settings[field.key] || "")}
                         onChange={(e) => setForm((p) => ({ ...p, [field.key]: e.target.value }))}
                         placeholder={field.placeholder}
                         className="w-full bg-gray-700 border border-gray-500 text-gray-100 placeholder-gray-400 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-400 font-mono"

@@ -106,6 +106,14 @@ async function listTasks(userId, filters = {}) {
   if (filters.task_status_id) where.task_status_id = filters.task_status_id;
   if (filters.activity_type_id) where.activity_type_id = filters.activity_type_id;
 
+  if (filters.date_from && filters.date_to) {
+    where.task_date = { [Op.between]: [filters.date_from, filters.date_to] };
+  } else if (filters.date_from) {
+    where.task_date = { [Op.gte]: filters.date_from };
+  } else if (filters.date_to) {
+    where.task_date = { [Op.lte]: filters.date_to };
+  }
+
   return Task.findAll({
     where,
     include: [

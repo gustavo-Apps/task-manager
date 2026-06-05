@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import api from "../lib/api";
 import toast from "react-hot-toast";
 import Badge from "../components/Badge";
@@ -219,10 +220,10 @@ export default function TicketsPage() {
                     ) : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-4 py-3">
-                    <a href={`/tasks/${ticket.id}/edit`}
+                    <Link to={`/tasks/${ticket.id}/edit`}
                       className="text-gray-300 hover:text-white transition-colors">
                       Editar
-                    </a>
+                    </Link>
                   </td>
                 </tr>
               ))}

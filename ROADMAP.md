@@ -1,4 +1,4 @@
-# Roadmap - Weekly Reports
+﻿# Roadmap - Weekly Reports
 
 ## Fase 1 - Backend/API
 
@@ -25,13 +25,13 @@
 - [x] Quebra de linha correta no cabecalho do .md (trailing two-space)
 - [x] PM2 (ecosystem.config.js) para gerenciamento local do processo
 
-### Sprint 3 - Funcionalidades Pendentes
-- [ ] Filtros em `/api/tasks`: por tipo, data, status
-- [ ] Rota admin para listar todos os usuarios e relatorios
-- [ ] Exportar relatorio em JSON (alem do Markdown)
-- [ ] Scheduler semanal (node-cron) para fechar relatorios automaticamente toda segunda-feira
-- [ ] Paginacao na listagem de relatorios antigos
-- [ ] Validar variaveis de ambiente obrigatorias na inicializacao
+### Sprint 3 - Funcionalidades Pendentes (concluida)
+- [x] Filtros em `/api/tasks`: por tipo (`activity_type_id`), status (`task_status_id`), e intervalo de datas (`date_from` / `date_to`)
+- [x] Rota admin para listar todos os usuarios (`GET /api/admin/users`) e relatorios (`GET /api/admin/reports`) — requer `role=admin`
+- [x] Exportar relatorio em JSON: `GET /api/reports/:id/json`
+- [x] Scheduler semanal (`node-cron`) — toda segunda-feira 00:05 fecha relatorios abertos da semana anterior
+- [x] Paginacao na listagem de relatorios — backend retorna `{ reports, total, page, totalPages }`; frontend com controles Anterior/Proxima
+- [x] Validar variaveis de ambiente obrigatorias na inicializacao (`src/utils/validateEnv.js`) — processo encerra com erro se faltar variavel critica
 - [ ] Documentar endpoints no README com exemplos de request/response
 
 ---
@@ -61,20 +61,33 @@
 - [x] Referencia completa de variaveis (tabela colapsavel)
 - [x] Contraste melhorado em todas as paginas
 
-### Sprint 7 - Em andamento (branch: feat/dashboard-generate-button)
-- [ ] Botao "Gerar Relatorio" de um clique no Dashboard
-  - Gera o .md da semana atual e dispara download direto
-  - Estado de loading durante a geracao
-  - Toast de sucesso/erro
-- [ ] Loading states e skeleton screens nas listagens
-- [ ] Responsividade mobile basica
-- [ ] Indicador visual de semana atual no Dashboard (header com numero da semana)
+### Sprint 7 - Polimento UI (concluida)
+- [x] Botao "Gerar Relatorio" de um clique no Dashboard — gera .md da semana atual com download direto, loading state e toast de sucesso/erro
+- [x] Skeleton screens nas listagens (Dashboard, ReportsPage)
+- [x] Responsividade mobile basica — sidebar colapsavel em telas pequenas
+- [x] Indicador visual de semana atual no Dashboard — badge "Semana atual" no header
+
+**Fixes aplicados na mesma sprint:**
+- [x] `SettingsPage` — bug que impedia apagar texto nos campos do relatorio .md (form inicializado com `null` em vez de `""`)
+- [x] `TicketsPage` — botao Editar trocado de `<a href>` para `<Link>` (evita reload completo da SPA)
+- [x] `ReportsPage` — contagem exibida corrigida para usar `total` real do backend
+- [x] `ReportsPage` — controles de paginacao adicionados (Anterior / Pagina X de Y / Proxima)
+- [x] `validateEnv.js` — `DB_PASSWORD` removido das variaveis obrigatorias (banco local sem senha)
 
 ### Sprint 8 - Polimento Final
 - [ ] Pagina de perfil do usuario (alterar nome, email, cargo, senha)
 - [ ] Confirmacao antes de fechar um relatorio
 - [ ] Filtros no Dashboard: por tipo de atividade, por status
 - [ ] Busca rapida de tarefas por titulo
+
+### Sprint 9 - Painel Administrativo
+- [ ] Pagina /admin protegida por role=admin
+- [ ] Listagem de todos os usuarios (nome, email, cargo, criado em)
+- [ ] Criar usuario via formulario (sem POST direto na API)
+- [ ] Editar usuario: nome, email, cargo, senha, role
+- [ ] Desativar/reativar usuario (soft delete ou campo is_active)
+- [ ] Backend: endpoint PATCH /api/admin/users/:id e POST /api/admin/users
+- [ ] Rota de frontend protegida: redireciona para /dashboard se nao for admin
 
 ---
 
@@ -96,7 +109,7 @@
 | Branch | Objetivo | Status |
 |--------|----------|--------|
 | `master` | producao | ativo |
-| `feat/dashboard-generate-button` | botao gerar relatorio + polish sprint 7 | em andamento |
+| `feat/dashboard-generate-button` | botao gerar relatorio + polish sprint 7 | concluida |
 
 ---
 
