@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: "/tickets",  label: "Tickets"       },
   { to: "/reports",  label: "Relatorios"    },
   { to: "/settings", label: "Configuracoes" },
+  { to: "/profile",  label: "Perfil"        },
 ];
 
 export default function Layout({ children }) {

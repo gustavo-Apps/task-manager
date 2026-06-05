@@ -44,6 +44,7 @@ export default function DashboardPage() {
   const preset       = searchParams.get("preset") || "current";
   const dateParam    = searchParams.get("date")   || "";
   const statusFilter = searchParams.get("status") || "";
+  const typeFilter   = searchParams.get("type")   || "";
   const search       = searchParams.get("q")      || "";
   const sortCol      = searchParams.get("sort")   || "task_date";
   const sortDir      = searchParams.get("dir")    || "asc";
@@ -56,6 +57,9 @@ export default function DashboardPage() {
   }
   function setStatusFilter(value) {
     setSearchParams((p) => { value ? p.set("status", value) : p.delete("status"); return p; }, { replace: true });
+  }
+  function setTypeFilter(value) {
+    setSearchParams((p) => { value ? p.set("type", value) : p.delete("type"); return p; }, { replace: true });
   }
   function setSearch(value) {
     setSearchParams((p) => { value ? p.set("q", value) : p.delete("q"); return p; }, { replace: true });
@@ -90,7 +94,7 @@ export default function DashboardPage() {
   const [report, setReport]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const { taskStatuses } = useLookups();
+  const { taskStatuses, activityTypes } = useLookups();
 
   function resolveDate() {
     if (preset === "custom") return dateParam || toISO(new Date());
@@ -206,13 +210,14 @@ export default function DashboardPage() {
 
   const filteredTasks = report?.tasks?.filter((task) => {
     const matchStatus = statusFilter ? task.taskStatus?.id === Number(statusFilter) : true;
+    const matchType   = typeFilter   ? task.activityType?.id === Number(typeFilter)  : true;
     const q = search.trim().toLowerCase();
     const matchSearch = q
       ? task.title?.toLowerCase().includes(q) ||
         task.azure_ticket_id?.toLowerCase().includes(q) ||
         task.description?.toLowerCase().includes(q)
       : true;
-    return matchStatus && matchSearch;
+    return matchStatus && matchType && matchSearch;
   }) ?? [];
 
   const sortedTasks = getSortedTasks(filteredTasks);
@@ -319,6 +324,17 @@ export default function DashboardPage() {
             ))}
           </select>
 
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="bg-gray-700 border border-gray-500 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
+          >
+            <option value="">Todos os tipos</option>
+            {activityTypes.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+
           <Link
             to="/tasks/new"
             className="bg-gray-700 hover:bg-gray-600 text-white text-xs font-medium px-3 py-2 rounded transition-colors"
@@ -354,7 +370,7 @@ export default function DashboardPage() {
       {!loading && (!report || filteredTasks.length === 0) ? (
         <div className="border border-dashed border-gray-600 rounded-lg p-10 text-center">
           <p className="text-sm text-gray-300">
-            {statusFilter || search
+            {statusFilter || typeFilter || search
               ? "Nenhuma atividade corresponde ao filtro."
               : report
               ? "Nenhuma atividade registrada nesta semana."
@@ -362,7 +378,7 @@ export default function DashboardPage() {
               ? "Selecione uma data para ver a semana."
               : "Nenhum relatorio encontrado para esta semana."}
           </p>
-          {!statusFilter && !search && preset === "current" && (
+          {!statusFilter && !typeFilter && !search && preset === "current" && (
             <Link to="/tasks/new" className="text-xs text-blue-400 hover:text-blue-300 hover:underline mt-3 inline-block">
               Adicionar primeira tarefa
             </Link>
