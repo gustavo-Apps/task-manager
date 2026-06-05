@@ -63,6 +63,21 @@ const MD_DEFAULTS_BY_CARGO = {
 // Chaves conhecidas com defaults fixos (independentes de cargo)
 const SETTING_DEFAULTS_FIXED = [
   {
+    key: "azure_devops_token",
+    value: "",
+    description: "Personal Access Token do Azure DevOps (permissao Work Items — Read)",
+  },
+  {
+    key: "azure_devops_org",
+    value: "",
+    description: "Organizacao no Azure DevOps (ex: appelsoft)",
+  },
+  {
+    key: "azure_devops_project",
+    value: "",
+    description: "Projeto no Azure DevOps (ex: Time Desktop - Desenvolvimento)",
+  },
+  {
     key: "clickup_api_token",
     value: "",
     description: "Token de API pessoal do ClickUp (Personal API Token)",
@@ -76,6 +91,16 @@ const SETTING_DEFAULTS_FIXED = [
     key: "clickup_assignee_id",
     value: "",
     description: "ID do usuario no ClickUp para atribuir as tasks (opcional)",
+  },
+  {
+    key: "clickup_doc_parent_id",
+    value: "",
+    description: "ID do destino onde o Doc sera criado (Space, Folder ou List)",
+  },
+  {
+    key: "clickup_doc_parent_type",
+    value: "",
+    description: "Tipo do destino: space | folder | list",
   },
 ];
 

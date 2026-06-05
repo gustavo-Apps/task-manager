@@ -49,13 +49,16 @@ async function getMdPrefs(userId) {
  * @param {number} userId
  * @returns {Promise<WeeklyReport[]>}
  */
-async function listReports(userId) {
-  return WeeklyReport.findAll({
+async function listReports(userId, { page = 1, limit = 20 } = {}) {
+  const offset = (page - 1) * limit;
+  const { count, rows } = await WeeklyReport.findAndCountAll({
     where: { user_id: userId },
     order: [
       ["year", "DESC"],
       ["week_number", "DESC"],
     ],
+    limit,
+    offset,
     include: [
       {
         model: Task,
@@ -65,6 +68,7 @@ async function listReports(userId) {
       },
     ],
   });
+  return { reports: rows, total: count, page, limit, totalPages: Math.ceil(count / limit) };
 }
 
 /**
@@ -84,7 +88,7 @@ async function getReport(reportId, userId) {
         include: [{ model: ActivityType, as: "activityType" }, { model: TaskStatus, as: "taskStatus" }],
         order: [["task_date", "ASC"]],
       },
-      { model: User, as: "user", attributes: ["id", "username", "email"] },
+      { model: User, as: "user", attributes: ["id", "username", "email", "cargo"] },
     ],
   });
 
@@ -249,7 +253,7 @@ async function generateMarkdown(reportId, userId) {
       lines.push("|--------|-----------|------|--------|");
       for (const task of ticketTasks) {
         const statusLabel = task.taskStatus?.name || "—";
-        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${task.task_date} | ${statusLabel} |`);
+        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${formatDatePtBR(task.task_date)} | ${statusLabel} |`);
       }
       lines.push("");
     }
@@ -378,7 +382,7 @@ async function generateMarkdownForPeriod(userId, dataInicio, dataFim) {
       lines.push("|--------|-----------|------|--------|");
       for (const task of ticketTasks) {
         const statusLabel = task.taskStatus?.name || "—";
-        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${task.task_date} | ${statusLabel} |`);
+        lines.push(`| \`${task.azure_ticket_id}\` | ${task.title} | ${formatDatePtBR(task.task_date)} | ${statusLabel} |`);
       }
       lines.push("");
     }

@@ -12,8 +12,10 @@ const AppError = require("../utils/AppError");
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 const list = asyncHandler(async (req, res) => {
-  const reports = await reportService.listReports(req.user.id);
-  return success(res, { reports });
+  const page  = Number(req.query.page)  || 1;
+  const limit = Number(req.query.limit) || 20;
+  const result = await reportService.listReports(req.user.id, { page, limit });
+  return success(res, result);
 });
 
 const getCurrent = asyncHandler(async (req, res) => {
@@ -49,6 +51,13 @@ const downloadMarkdown = asyncHandler(async (req, res) => {
   });
 });
 
+const exportJson = asyncHandler(async (req, res) => {
+  const report = await reportService.getReport(Number(req.params.id), req.user.id);
+  res.setHeader('Content-Disposition', `attachment; filename="relatorio-semana${report.week_number}-${report.year}.json"`);
+  res.setHeader('Content-Type', 'application/json');
+  return res.json({ report });
+});
+
 const close = asyncHandler(async (req, res) => {
   const report = await reportService.closeReport(Number(req.params.id), req.user.id);
   return success(res, { report });
@@ -69,4 +78,4 @@ const downloadMarkdownForPeriod = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { list, getCurrent, getForDate, getOne, downloadMarkdown, downloadMarkdownForPeriod, close };
+module.exports = { list, getCurrent, getForDate, getOne, exportJson, downloadMarkdown, downloadMarkdownForPeriod, close };

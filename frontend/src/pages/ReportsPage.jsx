@@ -27,6 +27,9 @@ export default function ReportsPage() {
   const [loading, setLoading]           = useState(true);
   const [downloading, setDownloading]   = useState(false);
   const [sendingClickUp, setSendingClickUp] = useState(null);
+  const [page, setPage]                   = useState(1);
+  const [totalPages, setTotalPages]       = useState(1);
+  const [total, setTotal]                 = useState(0);
 
   const isFirstRender = useRef(true);
 
@@ -42,13 +45,18 @@ export default function ReportsPage() {
       return p;
     }, { replace: true });
   }
-
   useEffect(() => {
-    api.get("/reports")
-      .then((res) => setReports(res.data.data.reports))
+    setLoading(true);
+    api.get(`/reports?page=${page}&limit=20`)
+      .then((res) => {
+        const d = res.data.data;
+        setReports(d.reports);
+        setTotal(d.total ?? d.reports.length);
+        setTotalPages(d.totalPages ?? 1);
+      })
       .catch(() => toast.error("Erro ao carregar relatorios."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
   useEffect(() => {
     if (preset === "custom") return;
@@ -148,7 +156,26 @@ export default function ReportsPage() {
     }
   }
 
-  if (loading) return <p className="text-sm text-gray-300">Carregando...</p>;
+  if (loading) return (
+    <div className="max-w-3xl">
+      <div className="space-y-3 animate-pulse">
+        {[1,2,3].map((i) => (
+          <div key={i} className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-4 bg-gray-600 rounded w-40" />
+                <div className="h-3 bg-gray-600 rounded w-56" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-7 bg-gray-600 rounded w-24" />
+                <div className="h-7 bg-gray-600 rounded w-20" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-3xl">
@@ -156,7 +183,7 @@ export default function ReportsPage() {
       {/* Cabeçalho */}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-white">Historico de Relatorios</h1>
-        <p className="text-sm text-gray-300 mt-1">{reports.length} semana(s) registrada(s)</p>
+        <p className="text-sm text-gray-300 mt-1">{total} semana(s) registrada(s)</p>
       </div>
 
       {/* Filtro por período */}
@@ -272,6 +299,27 @@ export default function ReportsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Paginacao */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-3 py-1.5 text-xs rounded bg-gray-700 border border-gray-500 text-gray-300 hover:bg-gray-600 disabled:opacity-40 transition-colors">
+            Anterior
+          </button>
+          <span className="text-xs text-gray-400">
+            Pagina {page} de {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-3 py-1.5 text-xs rounded bg-gray-700 border border-gray-500 text-gray-300 hover:bg-gray-600 disabled:opacity-40 transition-colors">
+            Proxima
+          </button>
         </div>
       )}
     </div>

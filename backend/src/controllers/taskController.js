@@ -22,6 +22,8 @@ const list = asyncHandler(async (req, res) => {
     weekly_report_id: req.query.weekly_report_id,
     task_status_id: req.query.task_status_id,
     activity_type_id: req.query.activity_type_id,
+    date_from: req.query.date_from,
+    date_to:   req.query.date_to,
   };
   const tasks = await taskService.listTasks(req.user.id, filters);
   return success(res, { tasks });

@@ -21,7 +21,7 @@ Setting.init(
     // Usuario dono desta configuracao
     user_id: {
       type: DataTypes.INTEGER,
-      allowNull: true,
+      allowNull: false,
       references: { model: "users", key: "id" },
     },
     // Chave da configuracao (ex: "clickup_api_token") — unica por usuario

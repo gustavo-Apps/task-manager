@@ -11,8 +11,9 @@ const clickupController = require("../controllers/clickupController");
 
 router.use(authenticate);
 
-router.get("/status", clickupController.checkStatus);
-router.get("/reports/:id", clickupController.getDocStatus);
-router.post("/reports/:id", clickupController.sendReport);
+router.get("/status",          clickupController.checkStatus);
+router.get("/destinations",    clickupController.listDestinations);
+router.get("/reports/:id",     clickupController.getDocStatus);
+router.post("/reports/:id",    clickupController.sendReport);
 
 module.exports = router;

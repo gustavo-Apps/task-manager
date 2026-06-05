@@ -9,11 +9,12 @@
 const router = require("express").Router();
 const { validate } = require("../middleware/validate");
 const { authenticate } = require("../middleware/authenticate");
-const { registerSchema, loginSchema } = require("../dtos/auth.dto");
+const { registerSchema, loginSchema, updateProfileSchema } = require("../dtos/auth.dto");
 const authController = require("../controllers/authController");
 
 router.post("/register", validate(registerSchema), authController.register);
-router.post("/login", validate(loginSchema), authController.login);
-router.get("/me", authenticate, authController.me);
+router.post("/login",    validate(loginSchema),    authController.login);
+router.get("/me",        authenticate,             authController.me);
+router.patch("/profile", authenticate, validate(updateProfileSchema), authController.updateProfile);
 
 module.exports = router;
