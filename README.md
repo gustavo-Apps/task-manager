@@ -1,368 +1,243 @@
 # Weekly Reports
 
 Sistema de registro de atividades semanais para equipes de QA e desenvolvimento.
-Cada usuário registra suas tarefas durante a semana e gera um relatório em `.md` ou PDF ao final — formatado de acordo com suas próprias preferências.
+Cada usuário registra suas tarefas ao longo da semana e gera um relatório em `.md` ou PDF ao final — com o layout personalizado por cargo e preferências individuais.
 
 ---
 
-## Sumário
+## Índice
 
-- [Visão Geral](#visão-geral)
-- [Stack](#stack)
-- [Pré-requisitos](#pré-requisitos)
-- [Instalação](#instalação)
-- [Variáveis de Ambiente](#variáveis-de-ambiente)
-- [Banco de Dados](#banco-de-dados)
-- [Rodando o Projeto](#rodando-o-projeto)
-- [Estrutura de Pastas](#estrutura-de-pastas)
-- [Endpoints da API](#endpoints-da-api)
-- [Funcionalidades](#funcionalidades)
-- [Configurações por Usuário](#configurações-por-usuário)
-- [Webhooks](#webhooks)
-- [Exportação de Relatórios](#exportação-de-relatórios)
-- [Painel Administrativo](#painel-administrativo)
-- [Deploy](#deploy)
-- [Convenção de Commits](#convenção-de-commits)
-
----
-
-## Visão Geral
-
-O fluxo principal é simples:
-
-1. Usuário se cadastra e escolhe seu cargo
-2. Durante a semana, registra tarefas no Dashboard
-3. Ao final da semana, gera o relatório em `.md` (download direto) ou PDF formatado
-4. O sistema fecha automaticamente o relatório às 00:05 de toda segunda-feira
-5. Webhooks configurados recebem uma notificação automática ao gerar ou fechar um relatório
-
-Cada usuário pode personalizar completamente o template do `.md` — título, cabeçalho, seções, rodapé — usando variáveis dinâmicas como `{{username}}`, `{{week_number}}`, `{{total_tasks}}`, entre outras.
-
----
-
-## Stack
-
-| Camada | Tecnologia |
-|---|---|
-| Backend | Node.js + Express |
-| ORM | Sequelize |
-| Banco | MySQL / MariaDB |
-| Autenticação | JWT (Bearer token) |
-| Validação | Joi |
-| Agendamento | node-cron |
-| Frontend | React + Vite + Tailwind CSS |
-| Build | Vite |
-| Gerenciador de processo | PM2 (opcional) |
-| Deploy | Railway (railway.json incluso) |
+1. [Pré-requisitos](#pré-requisitos)
+2. [Instalação](#instalação)
+3. [Configuração do ambiente](#configuração-do-ambiente)
+4. [Banco de dados](#banco-de-dados)
+5. [Rodando o projeto](#rodando-o-projeto)
+6. [Primeiro acesso](#primeiro-acesso)
+7. [Como usar](#como-usar)
+8. [Exportação de relatórios](#exportação-de-relatórios)
+9. [Webhooks](#webhooks)
+10. [Painel administrativo](#painel-administrativo)
+11. [Deploy em produção](#deploy-em-produção)
+12. [Referência de endpoints](#referência-de-endpoints)
+13. [Stack e estrutura de pastas](#stack-e-estrutura-de-pastas)
 
 ---
 
 ## Pré-requisitos
 
-- Node.js >= 18
-- MySQL ou MariaDB rodando localmente (ou remoto)
-- npm
+| Ferramenta | Versão mínima | Como verificar |
+|---|---|---|
+| Node.js | 18 | `node -v` |
+| npm | 9 | `npm -v` |
+| MySQL ou MariaDB | 5.7 / 10.4 | `mysql --version` |
+
+O banco precisa estar rodando antes de iniciar o backend.
 
 ---
 
 ## Instalação
 
 ```bash
-# Clone o repositório
+# 1. Clone o repositório
 git clone https://github.com/gustavo-Apps/task-manager.git
 cd task-manager
 
-# Instale as dependências do backend
+# 2. Instale as dependências do backend
 cd backend
 npm install
 
-# Instale as dependências do frontend
+# 3. Instale as dependências do frontend (em outro terminal ou após o passo 2)
 cd ../frontend
 npm install
 ```
 
 ---
 
-## Variáveis de Ambiente
-
-Copie o arquivo de exemplo e preencha:
+## Configuração do ambiente
 
 ```bash
-cd backend
+# Dentro da pasta backend/
 cp .env.example .env
 ```
 
-| Variável | Descrição | Exemplo |
-|---|---|---|
-| `PORT` | Porta do servidor | `3000` |
-| `NODE_ENV` | Ambiente | `development` |
-| `DB_HOST` | Host do banco | `localhost` |
-| `DB_PORT` | Porta do banco | `3306` |
-| `DB_NAME` | Nome do banco | `weekly_reports` |
-| `DB_USER` | Usuário do banco | `root` |
-| `DB_PASS` | Senha do banco | _(vazio se sem senha)_ |
-| `JWT_SECRET` | Chave secreta do JWT | _(string longa e aleatória)_ |
-| `JWT_EXPIRES_IN` | Expiração do token | `7d` |
-| `REPORTS_DIR` | Pasta para os `.md` gerados | `reports/generated` |
+Abra o `.env` e preencha:
 
-Gerar um `JWT_SECRET` seguro:
+```env
+PORT=3000
+NODE_ENV=development
+
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=weekly_reports
+DB_USER=root
+DB_PASS=                      # deixe vazio se o banco local não tiver senha
+
+JWT_SECRET=                   # gere abaixo
+JWT_EXPIRES_IN=7d
+
+REPORTS_DIR=reports/generated
+```
+
+Para gerar um `JWT_SECRET` seguro:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```
 
+Cole o resultado no campo `JWT_SECRET`. Em produção isso é obrigatório — o servidor rejeita inicialização sem ele.
+
 ---
 
-## Banco de Dados
+## Banco de dados
 
-O Sequelize cria as tabelas automaticamente na primeira execução (`sync({ alter: true })`).
-Para popular os dados iniciais (tipos de atividade, status de tarefa, cargos):
+O sistema cria as tabelas automaticamente na primeira inicialização.
+Depois, rode o seed para popular os dados iniciais:
 
 ```bash
 cd backend
 npm run db:seed
 ```
 
-Tabelas criadas automaticamente:
+O seed cria:
 
-| Tabela | Descrição |
-|---|---|
-| `users` | Usuários do sistema |
-| `user_cargos` | Cargos disponíveis (Dev, QA, GP, etc.) |
-| `activity_types` | Tipos de atividade (Teste, Reunião, etc.) |
-| `task_statuses` | Status de tarefa (Pendente, Em andamento, Concluido, etc.) |
-| `weekly_reports` | Relatórios semanais (um por usuário por semana ISO) |
-| `tasks` | Tarefas vinculadas a um relatório |
-| `settings` | Configurações por usuário (chave/valor) |
-| `user_webhooks` | Webhooks de notificação por usuário (máx. 5) |
-| `audit_logs` | Log de auditoria de alterações |
+- 5 status de tarefa: Pendente, Em andamento, Concluido, Bloqueado, Cancelado
+- 8 tipos de atividade: Teste, Validação, Reunião, Documentação, Desenvolvimento, Análise, Deploy, Suporte
+- 5 cargos: Desenvolvedor, Analista de Testes, Gerente de Projeto, Analista de Requisitos, Engenheiro de DevOps
+- 1 usuário admin padrão:\n  - Email: `admin@weeklyreports.local`
+  - Senha: `Admin@12345`
+
+> Troque a senha do admin no primeiro acesso. Vá em **Perfil** no menu lateral.
+
+O seed é seguro para rodar mais de uma vez — usa `findOrCreate`, então não duplica dados.
+
+Se precisar recriar o schema do zero (apaga e recria todas as tabelas):
+
+```bash
+npm run db:sync
+```
+
+> Cuidado: `db:sync` usa `{ alter: true }` — ajusta colunas existentes sem apagar dados. Para limpar tudo, apague o banco manualmente e rode `db:seed`.
 
 ---
 
-## Rodando o Projeto
+## Rodando o projeto
 
 ### Desenvolvimento
 
+Abra dois terminais:
+
 ```bash
-# Backend (porta 3000)
+# Terminal 1 — backend (porta 3000)
 cd backend
 npm run dev
 
-# Frontend (porta 5173, em outro terminal)
+# Terminal 2 — frontend (porta 5173)
 cd frontend
 npm run dev
 ```
 
-### Produção com PM2
+Acesse: [http://localhost:5173](http://localhost:5173)
+
+### Com PM2 (processo persistente, sem nodemon)
 
 ```bash
 cd backend
-npm run pm2:start   # inicia
-npm run pm2:status  # verifica
-npm run pm2:logs    # logs em tempo real
-npm run pm2:restart # reinicia
-npm run pm2:stop    # para
-```
 
-### Build do frontend
-
-```bash
-cd frontend
-npm run build
-# Arquivos gerados em frontend/dist/
+npm run pm2:start    # inicia em background
+npm run pm2:status   # verifica se está rodando
+npm run pm2:logs     # acompanha logs em tempo real
+npm run pm2:restart  # reinicia após alterações
+npm run pm2:stop     # encerra o processo
 ```
 
 ---
 
-## Estrutura de Pastas
+## Primeiro acesso
 
-```
-weekly-reports/
-├── backend/
-│   ├── src/
-│   │   ├── config/          # Conexão com banco
-│   │   ├── controllers/     # Handlers HTTP
-│   │   ├── dtos/            # Schemas Joi (validação)
-│   │   ├── middleware/      # Autenticação, validação, erros
-│   │   ├── models/          # Entidades Sequelize
-│   │   ├── routes/          # Definição de endpoints
-│   │   ├── scripts/         # Utilitários CLI (seed, sync)
-│   │   ├── services/        # Regras de negócio
-│   │   └── utils/           # Helpers (semana ISO, resposta HTTP, erros)
-│   ├── reports/generated/   # Arquivos .md gerados (ignorado pelo git)
-│   ├── .env.example
-│   ├── ecosystem.config.js  # Configuração PM2
-│   └── server.js
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # Componentes reutilizáveis
-│   │   ├── contexts/        # AuthContext
-│   │   ├── hooks/           # useLookups, etc.
-│   │   ├── lib/             # api.js (axios), generatePdf.js
-│   │   └── pages/           # Páginas da aplicação
-│   └── vite.config.js
-├── railway.json             # Config de deploy Railway
-└── ROADMAP.md
-```
+1. Acesse [http://localhost:5173](http://localhost:5173)
+2. Faça login com `admin@weeklyreports.local` / `Admin@12345`
+3. Vá em **Admin** no menu → crie os usuários da equipe
+4. Cada usuário faz login, acessa **Configurações** e personaliza o template do relatório
+
+Para criar sua própria conta sem passar pelo admin, use a tela de **Cadastro** no login.
 
 ---
 
-## Endpoints da API
+## Como usar
 
-Todos os endpoints protegidos exigem header:
-```
-Authorization: Bearer <token>
-```
+### Registrar uma atividade
 
-### Autenticação
+1. Clique em **Nova Tarefa** no Dashboard
+2. Preencha:
+   - **Título** — o que foi feito
+   - **Tipo** — categoria da atividade (Teste, Reunião, etc.)
+   - **Status** — estado atual
+   - **Data** — quando foi realizado
+   - **Ticket Azure** (opcional) — preencha o número e o título é buscado automaticamente
+3. Salve
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `POST` | `/api/auth/register` | Cadastro de usuário |
-| `POST` | `/api/auth/login` | Login — retorna JWT |
-| `GET` | `/api/auth/me` | Dados do usuário autenticado |
-| `PATCH` | `/api/auth/profile` | Atualizar username ou senha |
+### Gerenciar tarefas
 
-### Tarefas
+- **Alterar status** — clique no badge de status diretamente no card do Dashboard
+- **Duplicar** — ícone de cópia no card (útil para atividades recorrentes)
+- **Editar** — ícone de lápis no card
+- **Excluir** — ícone de lixeira no card
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/tasks` | Listar tarefas (filtros: `type`, `status`, `date_from`, `date_to`, `q`) |
-| `GET` | `/api/tasks/pending` | Tarefas com status diferente de Concluido (todas as semanas) |
-| `POST` | `/api/tasks` | Criar tarefa |
-| `GET` | `/api/tasks/:id` | Detalhe de uma tarefa |
-| `PUT` | `/api/tasks/:id` | Atualizar tarefa |
-| `PATCH` | `/api/tasks/:id/status` | Atualizar apenas o status |
-| `POST` | `/api/tasks/:id/duplicate` | Duplicar tarefa |
-| `DELETE` | `/api/tasks/:id` | Remover tarefa |
+### Tarefas pendentes
 
-### Relatórios
+A aba **Pendentes** no menu mostra todas as tarefas com status diferente de "Concluido" de qualquer semana. Use para não perder atividades em aberto de semanas anteriores.
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/reports` | Listar relatórios (paginado: `page`, `limit`) |
-| `GET` | `/api/reports/current` | Relatório da semana atual |
-| `GET` | `/api/reports/date/:date` | Relatório pela data (YYYY-MM-DD) |
-| `GET` | `/api/reports/:id` | Detalhe de um relatório |
-| `GET` | `/api/reports/:id/markdown` | Gerar e baixar `.md` |
-| `GET` | `/api/reports/:id/json` | Exportar relatório em JSON |
-| `POST` | `/api/reports/:id/close` | Fechar relatório manualmente |
+### Fechar o relatório
 
-### Configurações
+O relatório da semana é fechado automaticamente toda segunda-feira às 00:05.
+Para fechar manualmente: abra o relatório em **Relatórios** → clique em **Fechar Relatório**.
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/settings` | Todas as configurações do usuário |
-| `GET` | `/api/settings/:key` | Uma configuração pelo key |
-| `PUT` | `/api/settings/:key` | Salvar/atualizar configuração |
-| `POST` | `/api/settings/reset` | Restaurar defaults do cargo |
-
-### Webhooks
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/webhooks` | Listar webhooks do usuário |
-| `POST` | `/api/webhooks` | Criar webhook (máx. 5) |
-| `PATCH` | `/api/webhooks/:id` | Editar label, URL ou enabled |
-| `DELETE` | `/api/webhooks/:id` | Remover webhook |
-| `POST` | `/api/webhooks/:id/test` | Disparar payload de teste |
-
-### Lookups
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/lookups/activity-types` | Tipos de atividade |
-| `GET` | `/api/lookups/task-statuses` | Status de tarefa |
-| `GET` | `/api/lookups/cargos` | Cargos disponíveis |
-
-### Integrações
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/azure/status` | Verifica se Azure DevOps está configurado |
-| `GET` | `/api/azure/ticket/:id` | Busca título de um work item pelo ID |
-| `GET` | `/api/clickup/reports/:id` | Verifica se relatório já foi enviado ao ClickUp |
-| `POST` | `/api/clickup/reports/:id` | Envia relatório ao ClickUp como Doc |
-
-### Painel Admin _(requer role=admin)_
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/admin/users` | Listar todos os usuários |
-| `POST` | `/api/admin/users` | Criar usuário |
-| `PATCH` | `/api/admin/users/:id` | Editar usuário (nome, email, cargo, role, is_active) |
-| `POST` | `/api/admin/users/:id/reset-password` | Redefinir senha |
-| `DELETE` | `/api/admin/users/:id` | Remover usuário |
-| `GET` | `/api/admin/reports` | Listar todos os relatórios de todos os usuários |
+Relatórios fechados não aceitam novas tarefas.
 
 ---
 
-## Funcionalidades
+## Exportação de relatórios
 
-### Dashboard
-- Lista de tarefas da semana atual
-- Filtros por tipo de atividade e status, persistidos na URL
-- Busca por título
-- Ordenação por coluna (Data, Tipo, Status, Ticket) com ícones ▲/▼
-- Toggle de status inline por card (sem abrir formulário)
-- Duplicar tarefa com um clique
-- Botão "Gerar Relatório" — baixa o `.md` da semana atual diretamente
+### Markdown (.md)
 
-### Tarefas Pendentes
-- Página `/pending` com todas as tarefas cujo status é diferente de "Concluido"
-- Sem filtro de período — lista tudo em aberto de todas as semanas
-- Mesmas ações do Dashboard (editar, duplicar, alterar status)
-- Ao marcar como concluída, a tarefa some da lista automaticamente
+Gerado pelo backend com o template que você configurou em **Configurações > Relatório .md**.
 
-### Relatórios
-- Listagem paginada de semanas anteriores
-- Download do `.md` por relatório ou por período (intervalo de datas)
-- Exportação para PDF com layout formatado (A4, agrupado por tipo)
-- Visualização detalhada com lista de tarefas
-- Fechar relatório manualmente ou automaticamente (cron toda segunda 00:05)
+- Clique em **Gerar .md** no Dashboard (semana atual) ou na página de Relatórios (qualquer semana)
+- O arquivo é baixado automaticamente
+- Também é possível gerar por período (intervalo de datas) na aba de Relatórios
 
-### Perfil
-- Edição de username e senha
-- Email e cargo são somente leitura (gerenciados pelo admin)
+### PDF
 
----
+Gerado diretamente no browser — sem instalar nada extra.
 
-## Configurações por Usuário
+- Clique em **Exportar PDF** no detalhe de um relatório ou na lista de relatórios
+- Layout A4 com cabeçalho, tabelas por tipo de atividade e rodapé
+- Suporta múltiplas páginas automaticamente
 
-Acesse em **Configurações** no menu lateral. As abas disponíveis são:\n\n### Integração ClickUp\nConfigure o token da API e o Workspace ID para enviar relatórios como Doc no ClickUp.\n\n### Azure DevOps\nConfigure o token PAT, organização e projeto para buscar automaticamente o título de work items pelo ID ao criar uma tarefa.
+### Personalizar o template do .md
 
-### Relatório .md
-Personalize o template do seu relatório por seção:\n\n| Seção | Descrição |
+Acesse **Configurações > Relatório .md** e edite cada seção:\n\n| Seção | O que controla |
 |---|---|
-| Título | Linha de título do arquivo `.md` |
-| Informativo Geral | Cabeçalho com dados do usuário e semana |
-| Atividades | Template para cada tarefa listada |
-| Tickets | Seção de tickets com Azure DevOps link |
-| Rodapé | Linha final do relatório |
+| Título | Primeira linha do arquivo |
+| Informativo Geral | Cabeçalho com dados do período |
+| Atividades | Template de cada item da lista |
+| Tickets | Seção específica de tickets Azure |
+| Rodapé | Última linha do arquivo |
 
 **Variáveis disponíveis** (clique no nome para inserir no cursor):
 
 | Variável | Valor |
 |---|---|
-| `{{username}}` | Nome do usuário |
+| `{{username}}` | Seu nome de usuário |
 | `{{week_number}}` | Número da semana ISO |
 | `{{year}}` | Ano |
-| `{{period_start}}` | Data de início da semana (dd/mm/yyyy) |
-| `{{period_end}}` | Data de fim da semana (dd/mm/yyyy) |
-| `{{total_tasks}}` | Total de tarefas no relatório |
-| `{{total_tickets}}` | Total de tarefas com ticket Azure |
-| `{{generated_at}}` | Data/hora de geração |
+| `{{period_start}}` | Início da semana (dd/mm/yyyy) |
+| `{{period_end}}` | Fim da semana (dd/mm/yyyy) |
+| `{{total_tasks}}` | Total de tarefas |
+| `{{total_tickets}}` | Tarefas com ticket Azure |
+| `{{generated_at}}` | Data e hora de geração |
 
-Há um **preview ao vivo** com dados de exemplo e uma tabela de referência completa colapsável na interface.
-
-Cada cargo tem um template padrão pré-configurado:
-- Desenvolvedor
-- Analista de Testes
-- Gerente de Projeto
-- Analista de Requisitos
-- Engenheiro de DevOps
-
-Para restaurar os defaults do seu cargo: botão **Restaurar Padrões** na aba de Relatório .md.
+Cada cargo tem um template padrão pré-configurado. Para voltar ao padrão: **Restaurar Padrões**.
 
 ---
 
@@ -370,11 +245,12 @@ Para restaurar os defaults do seu cargo: botão **Restaurar Padrões** na aba de
 
 Configure até **5 webhooks** por usuário em **Configurações > Webhooks**.
 
-Os webhooks são disparados automaticamente em dois eventos:
-- **Ao baixar o `.md`** de um relatório (`event: "report.generated"`)
-- **Ao fechar um relatório** (`event: "report.closed"`)
+### Quando disparam
 
-O disparo é assíncrono — não bloqueia o download nem a resposta HTTP. Falhas individuais são registradas no log do servidor sem afetar os demais destinos.
+| Evento | Quando |
+|---|---|
+| `report.generated` | Toda vez que você baixa o `.md` de um relatório |
+| `report.closed` | Ao fechar um relatório (manual ou automático) |
 
 ### Payload enviado
 
@@ -386,110 +262,209 @@ O disparo é assíncrono — não bloqueia o download nem a resposta HTTP. Falha
   "period": "2026-06-02 ate 2026-06-08",
   "status": "Em andamento",
   "tasks": 12,
-  "embeds": [
-    {
-      "title": "Relatório gerado — Semana 23/2026",
-      "description": "O arquivo .md de Semana 23/2026 foi gerado por joao.",
-      "color": 3905270,
-      "fields": [
-        { "name": "Período",    "value": "2026-06-02 ate 2026-06-08", "inline": true },
-        { "name": "Status",     "value": "Em andamento",              "inline": true },
-        { "name": "Atividades", "value": "12",                        "inline": true }
-      ],
-      "footer": { "text": "Weekly Reports" },
-      "timestamp": "2026-06-08T14:00:00.000Z"
-    }
-  ]
+  "tickets": 4,
+  "content": "# Relatório Semanal\n...",
+  "embeds": [{ "title": "...", "description": "...", "color": 3905270 }]
 }
 ```
 
-**Compatibilidade:**
-- **Discord** — usa o campo `embeds` automaticamente; aparece como card formatado
-- **Slack / Teams / Mattermost** — usa os campos planos (`event`, `username`, `week`, etc.)
-- Qualquer endpoint que aceite `POST` com `Content-Type: application/json`
+- **`content`** — texto completo do `.md` gerado (truncado em 3800 chars se muito longo)
+- **`embeds`** — campo que o Discord usa para exibir o card formatado automaticamente
+- Para **Slack / Teams / n8n**: use os campos planos (`event`, `content`, `tasks`, etc.)
 
-Há um botão **Testar** por webhook para verificar a conectividade sem precisar gerar um relatório.
+### Testar
 
----
-
-## Exportação de Relatórios
-
-### Markdown (`.md`)
-- Gerado pelo backend com base no template configurado pelo usuário
-- Download direto via `GET /api/reports/:id/markdown`
-- Disponível no detalhe do relatório e na lista de semanas
-- Também disponível por período: intervalo de datas personalizável
-
-### PDF
-- Gerado 100% no browser (sem dependência de servidor)
-- Layout A4, fundo branco, tipografia limpa
-- Estrutura: header com semana/período/status, resumo por tipo de atividade, tabelas agrupadas por categoria, rodapé com data de geração
-- Suporte a múltiplas páginas automaticamente
-- Disponível no detalhe do relatório e na lista de semanas
-- `jsPDF` e `html2canvas` carregados sob demanda (não afetam o carregamento inicial)
+Clique em **Testar** ao lado de cada webhook para verificar a conectividade sem precisar gerar um relatório.
 
 ---
 
-## Painel Administrativo
+## Painel administrativo
 
-Acesse em `/admin` — visível no menu apenas para usuários com `role=admin`.
+Disponível em `/admin` — visível no menu apenas para usuários com role `admin`.
 
-Funcionalidades:
-- Listar todos os usuários com cargo, role e status ativo/inativo
-- Criar usuário (nome, email, cargo, role, senha inicial)
-- Editar usuário (nome, email, cargo, role, is_active)
-- Redefinir senha de qualquer usuário
-- Excluir usuário (não é possível excluir a própria conta)
-
-Usuários não-admin que tentarem acessar `/admin` diretamente são redirecionados para o Dashboard.
+| Ação | Descrição |
+|---|---|
+| Listar usuários | Nome, email, cargo, role, status ativo/inativo |
+| Criar usuário | Define nome, email, cargo, role e senha inicial |
+| Editar usuário | Altera qualquer campo menos a própria role do admin logado |
+| Redefinir senha | Gera nova senha para qualquer usuário |
+| Desativar | `is_active = false` — usuário não consegue mais logar |
+| Excluir | Remove permanentemente (não é possível excluir a própria conta) |
 
 ---
 
-## Deploy
+## Deploy em produção
 
-O repositório inclui `railway.json` configurado para deploy no [Railway](https://railway.app):
+### Railway (recomendado)
 
-```json
-{
-  "build": {
-    "buildCommand": "npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend"
-  },
-  "deploy": {
-    "startCommand": "node backend/server.js",
-    "healthcheckPath": "/health"
-  }
-}
+O repositório já tem `railway.json` configurado. Basta:
+
+1. Criar um projeto no [Railway](https://railway.app)
+2. Adicionar um banco MySQL (plugin)
+3. Configurar as variáveis de ambiente no painel
+4. Fazer push — o Railway detecta e faz o build automaticamente
+
+### VPS / servidor próprio
+
+```bash
+# Build do frontend
+cd frontend
+npm run build
+# Os arquivos ficam em frontend/dist/ — sirva via Nginx ou Express estático
+
+# Backend em produção com PM2
+cd backend
+NODE_ENV=production npm run pm2:start
 ```
 
-### Checklist antes do deploy
+### Checklist antes de ir para produção
 
-- [ ] Banco MySQL/MariaDB provisionado e acessível
-- [ ] Variáveis de ambiente configuradas no painel do Railway (ou `.env` em VPS)
-- [ ] `JWT_SECRET` gerado com `crypto.randomBytes(64)`
+- [ ] `JWT_SECRET` gerado com `crypto.randomBytes(64)` — nunca deixe o valor padrão
 - [ ] `NODE_ENV=production`
-- [ ] `npm run db:seed` executado uma vez para popular lookups
-- [ ] Usuário admin criado via `POST /api/auth/register` com `role=admin` (ou via script)
-- [ ] Frontend buildado (`npm run build` em `frontend/`) — servido como estático pelo Express em produção ou via CDN separado
+- [ ] Banco provisionado e acessível
+- [ ] `npm run db:seed` executado uma vez
+- [ ] Senha do admin padrão trocada (`Admin@12345` é só para primeiro acesso)
+- [ ] `REPORTS_DIR` com permissão de escrita no servidor
 
 ---
 
-## Convenção de Commits
+## Referência de endpoints
+
+Todos os endpoints (exceto login e registro) exigem:
 
 ```
-feat:     nova funcionalidade
-fix:      correção de bug
-refactor: refatoração sem mudança de comportamento
-docs:     documentação
-chore:    setup, config, dependências
-test:     testes
-ui:       mudanças visuais / contraste / layout
+Authorization: Bearer <token>
 ```
 
-## Convenção de Branches
+### Autenticação
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/api/auth/register` | Cadastrar novo usuário |
+| `POST` | `/api/auth/login` | Login — retorna JWT |
+| `GET` | `/api/auth/me` | Dados do usuário logado |
+| `PATCH` | `/api/auth/profile` | Atualizar username ou senha |
+
+### Tarefas
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/api/tasks` | Listar tarefas (`?type=`, `?status=`, `?date_from=`, `?date_to=`, `?q=`) |
+| `GET` | `/api/tasks/pending` | Tarefas com status diferente de Concluido |
+| `POST` | `/api/tasks` | Criar tarefa |
+| `GET` | `/api/tasks/:id` | Detalhe de uma tarefa |
+| `PUT` | `/api/tasks/:id` | Atualizar tarefa |
+| `PATCH` | `/api/tasks/:id/status` | Atualizar só o status |
+| `POST` | `/api/tasks/:id/duplicate` | Duplicar tarefa |
+| `DELETE` | `/api/tasks/:id` | Excluir tarefa |
+
+### Relatórios
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/api/reports` | Listar relatórios (`?page=`, `?limit=`) |
+| `GET` | `/api/reports/current` | Relatório da semana atual |
+| `GET` | `/api/reports/date/:date` | Relatório por data (`YYYY-MM-DD`) |
+| `GET` | `/api/reports/:id` | Detalhe com tasks |
+| `GET` | `/api/reports/:id/markdown` | Gerar e baixar `.md` |
+| `GET` | `/api/reports/:id/json` | Exportar em JSON |
+| `POST` | `/api/reports/:id/close` | Fechar relatório |
+
+### Configurações
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/api/settings` | Todas as configurações do usuário |
+| `GET` | `/api/settings/:key` | Uma configuração pela chave |
+| `PUT` | `/api/settings/:key` | Salvar configuração |
+| `POST` | `/api/settings/reset` | Restaurar defaults do cargo |
+
+### Webhooks
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/api/webhooks` | Listar webhooks |
+| `POST` | `/api/webhooks` | Criar webhook (máx. 5) |
+| `PATCH` | `/api/webhooks/:id` | Editar label, URL ou enabled |
+| `DELETE` | `/api/webhooks/:id` | Excluir webhook |
+| `POST` | `/api/webhooks/:id/test` | Disparar teste |
+
+### Lookups
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/api/lookups/activity-types` | Tipos de atividade |
+| `GET` | `/api/lookups/task-statuses` | Status de tarefa |
+| `GET` | `/api/lookups/cargos` | Cargos |
+
+### Integrações
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/api/azure/status` | Verifica configuração Azure DevOps |
+| `GET` | `/api/azure/ticket/:id` | Busca título do work item |
+| `GET` | `/api/clickup/reports/:id` | Verifica se enviado ao ClickUp |
+| `POST` | `/api/clickup/reports/:id` | Envia relatório ao ClickUp |
+
+### Admin (requer `role=admin`)
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/api/admin/users` | Listar todos os usuários |
+| `POST` | `/api/admin/users` | Criar usuário |
+| `PATCH` | `/api/admin/users/:id` | Editar usuário |
+| `POST` | `/api/admin/users/:id/reset-password` | Redefinir senha |
+| `DELETE` | `/api/admin/users/:id` | Excluir usuário |
+| `GET` | `/api/admin/reports` | Relatórios de todos os usuários |
+
+---
+
+## Stack e estrutura de pastas
+
+### Stack
+
+| Camada | Tecnologia |
+|---|---|
+| Backend | Node.js + Express |
+| ORM | Sequelize |
+| Banco | MySQL / MariaDB |
+| Autenticação | JWT |
+| Validação | Joi |
+| Agendamento | node-cron |
+| Frontend | React 19 + Vite + Tailwind CSS 4 |
+| PDF | jsPDF + html2canvas (lazy-loaded) |
+| Deploy | Railway / PM2 |
+
+### Estrutura
 
 ```
-master          produção (somente via PR)
-feat/xxx        novas features
-fix/xxx         correções pontuais
-improve/xxx     melhorias e refatorações
+weekly-reports/
+├── backend/
+│   ├── src/
+│   │   ├── config/          # Conexão com banco (Sequelize)
+│   │   ├── controllers/     # Handlers HTTP (recebem req, chamam service)
+│   │   ├── dtos/            # Schemas Joi para validação de entrada
+│   │   ├── middleware/      # Auth JWT, validação, tratamento de erros
+│   │   ├── models/          # Entidades Sequelize (User, Task, WeeklyReport...)
+│   │   ├── routes/          # Definição de endpoints e agrupamento
+│   │   ├── scripts/         # seedDatabase.js, syncDatabase.js
+│   │   ├── services/        # Regras de negócio (chamados pelos controllers)
+│   │   └── utils/           # isoWeek, response helper, AppError, validateEnv
+│   ├── reports/generated/   # Arquivos .md gerados (ignorado pelo git)
+│   ├── .env.example         # Template de variáveis de ambiente
+│   ├── ecosystem.config.js  # Configuração PM2
+│   └── server.js            # Ponto de entrada
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # Badge, PrivateRoute, Sidebar, Skeleton...
+│   │   ├── contexts/        # AuthContext (token, user, login, logout)
+│   │   ├── hooks/           # useLookups (activity types, statuses, cargos)
+│   │   ├── lib/
+│   │   │   ├── api.js       # Instância axios com interceptor de auth
+│   │   │   └── generatePdf.js  # Geração de PDF no browser
+│   │   └── pages/           # Dashboard, Reports, Tasks, Settings, Admin...
+│   └── vite.config.js
+├── railway.json             # Config de deploy Railway
+├── README.md
+└── ROADMAP.md
 ```
