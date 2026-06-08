@@ -45,9 +45,23 @@ const test = asyncHandler(async (req, res) => {
 
   const payload = {
     event: "test",
+    username: req.user.username,
     message: "Teste de webhook do Weekly Reports",
-    user: req.user.username,
     timestamp: new Date().toISOString(),
+    embeds: [
+      {
+        title: "Teste de Webhook",
+        description: `Webhook **${webhook.label}** configurado corretamente no Weekly Reports.`,
+        color: 5763719, // verde Discord
+        fields: [
+          { name: "Usuario",    value: req.user.username,          inline: true },
+          { name: "Destino",   value: webhook.label,              inline: true },
+          { name: "Status",    value: "Conexao OK",               inline: true },
+        ],
+        footer: { text: "Weekly Reports" },
+        timestamp: new Date().toISOString(),
+      },
+    ],
   };
 
   try {
