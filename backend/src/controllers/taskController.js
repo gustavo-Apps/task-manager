@@ -93,4 +93,13 @@ const duplicate = asyncHandler(async (req, res) => {
   return created(res, { task });
 });
 
-module.exports = { create, list, getOne, update, remove, checkTicket, listTickets, patchStatus, duplicate };
+/**
+ * GET /api/tasks/pending
+ * Lista todas as tasks do usuario com status != Concluido.
+ */
+const listPending = asyncHandler(async (req, res) => {
+  const tasks = await taskService.listPendingTasks(req.user.id);
+  return success(res, { tasks });
+});
+
+module.exports = { create, list, getOne, update, remove, checkTicket, listTickets, patchStatus, duplicate, listPending };

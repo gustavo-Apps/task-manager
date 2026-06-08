@@ -10,7 +10,7 @@
 
 const router = require("express").Router();
 const { authenticate } = require("../middleware/authenticate");
-const { ActivityType, TaskStatus } = require("../models");
+const { ActivityType, TaskStatus, UserCargos } = require("../models");
 const { success } = require("../utils/response");
 
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -30,6 +30,14 @@ router.get(
   asyncHandler(async (_req, res) => {
     const statuses = await TaskStatus.findAll({ where: { is_active: true } });
     return success(res, { taskStatuses: statuses });
+  })
+);
+
+router.get(
+  "/cargos",
+  asyncHandler(async (_req, res) => {
+    const cargos = await UserCargos.findAll({ order: [["name", "ASC"]] });
+    return success(res, { cargos });
   })
 );
 

@@ -7,12 +7,14 @@ import Layout          from "./components/Layout";
 
 import LoginPage        from "./pages/LoginPage";
 import DashboardPage    from "./pages/DashboardPage";
+import PendingTasksPage from "./pages/PendingTasksPage";
 import TaskFormPage     from "./pages/TaskFormPage";
 import ReportsPage      from "./pages/ReportsPage";
 import ReportDetailPage from "./pages/ReportDetailPage";
 import TicketsPage      from "./pages/TicketsPage";
 import SettingsPage     from "./pages/SettingsPage";
-import ProfilePage     from "./pages/ProfilePage";
+import ProfilePage      from "./pages/ProfilePage";
+import AdminPage        from "./pages/AdminPage";
 
 export default function App() {
   return (
@@ -40,6 +42,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <Layout><DashboardPage /></Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/pending"
+            element={
+              <PrivateRoute>
+                <Layout><PendingTasksPage /></Layout>
               </PrivateRoute>
             }
           />
@@ -104,6 +114,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <Layout><ProfilePage /></Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute>
+                <Layout><AdminPage /></Layout>
               </PrivateRoute>
             }
           />

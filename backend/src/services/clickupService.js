@@ -80,8 +80,16 @@ async function sendReportToClickUp(reportId, userId, overwrite = false) {
     await upsertDocPage(token, workspaceId, docId, docName, markdown);
   } else {
     // Monta o body — inclui parent se configurado
+    // A API v3 do ClickUp so aceita "space" ou "list" como parent de Doc
+    const VALID_PARENT_TYPES = ["space", "list"];
     const createBody = { name: docName, create_page: true };
     if (parentId && parentType) {
+      if (!VALID_PARENT_TYPES.includes(parentType)) {
+        throw new AppError(
+          `Tipo de destino "${parentType}" nao suportado para Docs. Selecione um Space ou uma List nas Configuracoes.`,
+          422
+        );
+      }
       createBody.parent = { id: parentId, type: parentType };
     }
 

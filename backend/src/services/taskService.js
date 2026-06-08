@@ -289,4 +289,29 @@ async function duplicateTask(taskId, userId) {
   });
 }
 
-module.exports = { createTask, listTasks, getTask, updateTask, deleteTask, checkTicketPending, listTickets, duplicateTask };
+/**
+ * Lista todas as tasks do usuario que NAO estao com status "Concluido".
+ *
+ * @param {number} userId
+ * @returns {Promise<Task[]>}
+ */
+async function listPendingTasks(userId) {
+  const doneStatus = await TaskStatus.findOne({ where: { name: "Concluido" } });
+
+  const where = { user_id: userId };
+  if (doneStatus) {
+    where.task_status_id = { [Op.ne]: doneStatus.id };
+  }
+
+  return Task.findAll({
+    where,
+    include: [
+      { model: ActivityType, as: "activityType" },
+      { model: TaskStatus,   as: "taskStatus"   },
+      { model: WeeklyReport, as: "weeklyReport", attributes: ["week_number", "year", "start_date", "end_date"] },
+    ],
+    order: [["task_date", "DESC"], [{ model: TaskStatus, as: "taskStatus" }, "name", "ASC"]],
+  });
+}
+
+module.exports = { createTask, listTasks, getTask, updateTask, deleteTask, checkTicketPending, listTickets, duplicateTask, listPendingTasks };

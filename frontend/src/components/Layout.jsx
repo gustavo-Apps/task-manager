@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 
 const NAV_ITEMS = [
   { to: "/",         label: "Dashboard"     },
+  { to: "/pending",  label: "Pendentes"     },
   { to: "/tickets",  label: "Tickets"       },
   { to: "/reports",  label: "Relatorios"    },
   { to: "/settings", label: "Configuracoes" },
@@ -25,6 +26,10 @@ export default function Layout({ children }) {
     toast.success("Sessao encerrada.");
     navigate("/login");
   }
+
+  const navItems = user?.role === "admin"
+    ? [...NAV_ITEMS, { to: "/admin", label: "Admin" }]
+    : NAV_ITEMS;
 
   return (
     <div className="min-h-screen flex bg-gray-900 text-gray-100">
@@ -57,7 +62,7 @@ export default function Layout({ children }) {
 
         {/* Nav */}
         <nav className="flex-1 px-2 py-4 space-y-0.5">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
