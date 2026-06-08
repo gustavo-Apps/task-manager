@@ -14,36 +14,76 @@ const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, ne
 
 /**
  * Monta o payload Discord-friendly para envio via webhook.
- * Usa "embeds" se o destino for Discord; caso contrario payload generico JSON.
- * O dispatch no service envia o objeto inteiro como JSON — cabe ao receptor usar o que quiser.
+ * Inclui o conteudo real do relatorio no corpo da mensagem.
+ * Trunca com aviso quando ultrapassa o limite do Discord (4096 chars no embed).
  */
-function buildWebhookPayload({ event, report, username, filePath }) {
-  const statusLabel = report.status === "closed" ? "Fechado" : "Em andamento";
-  const period      = `${report.start_date} ate ${report.end_date}`;
-  const taskCount   = report.tasks?.length ?? 0;
-  const weekRef     = `Semana ${report.week_number}/${report.year}`;
+function buildWebhookPayload({ event, report, username, mdContent }) {
+  const statusLabel  = report.status === "closed" ? "Fechado" : "Em andamento";
+  const period       = `${report.start_date} ate ${report.end_date}`;
+  const taskCount    = report.tasks?.length ?? 0;
+  const ticketCount  = report.tasks?.filter((t) => t.azure_ticket_id).length ?? 0;
+  const weekRef      = `Semana ${report.week_number}/${report.year}`;
 
-  // Payload compativel com Discord Webhooks (embeds) e outros (campos planos)
+  const isGenerated  = event === "report.generated";
+  const color        = isGenerated ? 0x3b82f6 : 0x22c55e;
+  const title        = isGenerated
+    ? `Relatorio gerado — ${weekRef}`
+    : `Relatorio fechado — ${weekRef}`;
+
+  // Conteudo do .md no corpo — truncado em 3800 chars para caber no embed
+  const LIMIT = 3800;
+  let descBody = "";
+  if (mdContent) {
+    descBody = mdContent.length > LIMIT
+      ? mdContent.slice(0, LIMIT) + `\n\n_(... conteudo truncado — ${mdContent.length} chars no total)_`
+      : mdContent;
+  } else if (!isGenerated) {
+    // Evento de fechamento: sem arquivo, monta resumo a partir das tasks
+    const lines = [
+      `**Colaborador:** ${username}  `,
+      `**Periodo:** ${period}  `,
+      `**Status:** ${statusLabel}  `,
+      "",
+      `**Total de atividades:** ${taskCount}  `,
+      `**Tickets:** ${ticketCount}  `,
+    ];
+    if (report.tasks?.length) {
+      lines.push("", "**Atividades:**");
+      for (const t of report.tasks.slice(0, 20)) {
+        const type   = t.activityType?.name  || "—";
+        const status = t.taskStatus?.name    || "—";
+        const ticket = t.azure_ticket_id ? ` \`#${t.azure_ticket_id}\`` : "";
+        lines.push(`- [${type}]${ticket} ${t.title} _(${status})_`);
+      }
+      if (report.tasks.length > 20)
+        lines.push(`_... e mais ${report.tasks.length - 20} atividades_`);
+    }
+    descBody = lines.join("\n");
+    if (descBody.length > LIMIT)
+      descBody = descBody.slice(0, LIMIT) + "\n\n_(... truncado)_";
+  }
+
   return {
-    // Campos planos para receptores genericos
+    // Campos planos para receptores genericos (Slack, Teams, n8n, etc.)
     event,
     username,
     week:    weekRef,
     period,
     status:  statusLabel,
     tasks:   taskCount,
+    tickets: ticketCount,
+    content: mdContent ?? null,
     // Embed Discord
     embeds: [
       {
-        title:       event === "report.generated" ? `Relatorio gerado — ${weekRef}` : `Relatorio fechado — ${weekRef}`,
-        description: event === "report.generated"
-          ? `O arquivo .md de **${weekRef}** foi gerado por **${username}**.`
-          : `O relatorio de **${weekRef}** foi fechado por **${username}**.`,
-        color: event === "report.generated" ? 0x3b82f6 : 0x22c55e,
+        title,
+        description: descBody || `Relatorio de **${weekRef}** por **${username}**.`,
+        color,
         fields: [
-          { name: "Periodo",     value: period,            inline: true },
-          { name: "Status",      value: statusLabel,       inline: true },
-          { name: "Atividades",  value: String(taskCount), inline: true },
+          { name: "Periodo",     value: period,              inline: true },
+          { name: "Status",      value: statusLabel,         inline: true },
+          { name: "Atividades",  value: String(taskCount),   inline: true },
+          { name: "Tickets",     value: String(ticketCount), inline: true },
         ],
         footer: { text: "Weekly Reports" },
         timestamp: new Date().toISOString(),
@@ -91,11 +131,14 @@ const downloadMarkdown = asyncHandler(async (req, res) => {
 
   // Disparo silencioso — nao bloqueia o download
   const report = await reportService.getReport(reportId, req.user.id);
+  // Le o .md gerado para incluir o conteudo real no webhook
+  const fs = require("fs");
+  const mdContent = fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf-8") : null;
   dispatchSilent(req.user.id, buildWebhookPayload({
     event:    "report.generated",
     report,
     username: req.user.username,
-    filePath,
+    mdContent,
   }));
 
   res.download(filePath, path.basename(filePath), (err) => {
@@ -118,6 +161,7 @@ const close = asyncHandler(async (req, res) => {
     event:    "report.closed",
     report,
     username: req.user.username,
+    mdContent: null, // fechamento nao gera arquivo — resumo montado a partir das tasks
   }));
 
   return success(res, { report });
