@@ -6,10 +6,58 @@
 
 const path = require("path");
 const reportService = require("../services/reportService");
+const webhookService = require("../services/webhookService");
 const { success } = require("../utils/response");
 const AppError = require("../utils/AppError");
 
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+/**
+ * Monta o payload Discord-friendly para envio via webhook.
+ * Usa "embeds" se o destino for Discord; caso contrario payload generico JSON.
+ * O dispatch no service envia o objeto inteiro como JSON — cabe ao receptor usar o que quiser.
+ */
+function buildWebhookPayload({ event, report, username, filePath }) {
+  const statusLabel = report.status === "closed" ? "Fechado" : "Em andamento";
+  const period      = `${report.start_date} ate ${report.end_date}`;
+  const taskCount   = report.tasks?.length ?? 0;
+  const weekRef     = `Semana ${report.week_number}/${report.year}`;
+
+  // Payload compativel com Discord Webhooks (embeds) e outros (campos planos)
+  return {
+    // Campos planos para receptores genericos
+    event,
+    username,
+    week:    weekRef,
+    period,
+    status:  statusLabel,
+    tasks:   taskCount,
+    // Embed Discord
+    embeds: [
+      {
+        title:       event === "report.generated" ? `Relatorio gerado — ${weekRef}` : `Relatorio fechado — ${weekRef}`,
+        description: event === "report.generated"
+          ? `O arquivo .md de **${weekRef}** foi gerado por **${username}**.`
+          : `O relatorio de **${weekRef}** foi fechado por **${username}**.`,
+        color: event === "report.generated" ? 0x3b82f6 : 0x22c55e,
+        fields: [
+          { name: "Periodo",     value: period,            inline: true },
+          { name: "Status",      value: statusLabel,       inline: true },
+          { name: "Atividades",  value: String(taskCount), inline: true },
+        ],
+        footer: { text: "Weekly Reports" },
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+}
+
+/** Dispara webhooks em background — nunca bloqueia a resposta HTTP. */
+function dispatchSilent(userId, payload) {
+  webhookService.dispatch(userId, payload).catch((err) =>
+    console.error("[webhook dispatch]", err.message)
+  );
+}
 
 const list = asyncHandler(async (req, res) => {
   const page  = Number(req.query.page)  || 1;
@@ -38,16 +86,20 @@ const getOne = asyncHandler(async (req, res) => {
 });
 
 const downloadMarkdown = asyncHandler(async (req, res) => {
-  const filePath = await reportService.generateMarkdown(
-    Number(req.params.id),
-    req.user.id
-  );
+  const reportId = Number(req.params.id);
+  const filePath = await reportService.generateMarkdown(reportId, req.user.id);
 
-  // Envia o arquivo como download com o header correto
+  // Disparo silencioso — nao bloqueia o download
+  const report = await reportService.getReport(reportId, req.user.id);
+  dispatchSilent(req.user.id, buildWebhookPayload({
+    event:    "report.generated",
+    report,
+    username: req.user.username,
+    filePath,
+  }));
+
   res.download(filePath, path.basename(filePath), (err) => {
-    if (err) {
-      console.error("Erro ao enviar arquivo:", err.message);
-    }
+    if (err) console.error("Erro ao enviar arquivo:", err.message);
   });
 });
 
@@ -60,6 +112,14 @@ const exportJson = asyncHandler(async (req, res) => {
 
 const close = asyncHandler(async (req, res) => {
   const report = await reportService.closeReport(Number(req.params.id), req.user.id);
+
+  // Disparo silencioso após fechar
+  dispatchSilent(req.user.id, buildWebhookPayload({
+    event:    "report.closed",
+    report,
+    username: req.user.username,
+  }));
+
   return success(res, { report });
 });
 
