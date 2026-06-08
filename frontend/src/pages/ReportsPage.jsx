@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
 import toast from "react-hot-toast";
+import { generatePdf } from "../lib/generatePdf";
 
 const PRESETS = [
   { label: "Semana atual",   value: "current" },
@@ -25,7 +26,8 @@ export default function ReportsPage() {
 
   const [reports, setReports]           = useState([]);
   const [loading, setLoading]           = useState(true);
-  const [downloading, setDownloading]   = useState(false);
+  const [downloading, setDownloading]     = useState(false);
+  const [exportingPdf, setExportingPdf]   = useState(null); // report.id em progresso
   const [sendingClickUp, setSendingClickUp] = useState(null);
   const [page, setPage]                   = useState(1);
   const [totalPages, setTotalPages]       = useState(1);
@@ -91,6 +93,22 @@ export default function ReportsPage() {
     }, { replace: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset]);
+
+  async function handleExportPdf(report) {
+    try {
+      setExportingPdf(report.id);
+      // Busca dados completos (com tasks) caso a listagem nao os inclua
+      const res  = await api.get(`/reports/${report.id}`);
+      const full = res.data.data.report;
+      await generatePdf(full);
+      toast.success("PDF exportado com sucesso.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar PDF.");
+    } finally {
+      setExportingPdf(null);
+    }
+  }
 
   async function handleSendClickUp(report) {
     try {
@@ -288,6 +306,16 @@ export default function ReportsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 8l-3-3m3 3l3-3" />
                   </svg>
                   .md
+                </button>
+                <button
+                  onClick={() => handleExportPdf(report)}
+                  disabled={exportingPdf === report.id}
+                  className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 disabled:opacity-50 px-2 py-1 rounded hover:bg-gray-600 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  {exportingPdf === report.id ? "..." : "PDF"}
                 </button>
                 <button
                   onClick={() => handleSendClickUp(report)}

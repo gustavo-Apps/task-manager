@@ -7,6 +7,7 @@ import { useParams, Link } from "react-router-dom";
 import api from "../lib/api";
 import toast from "react-hot-toast";
 import Badge from "../components/Badge";
+import { generatePdf } from "../lib/generatePdf";
 
 function formatDateBR(iso) {
   if (!iso) return "—";
@@ -19,6 +20,7 @@ export default function ReportDetailPage() {
   const [report, setReport]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [closing, setClosing] = useState(false);
 
   useEffect(() => {
@@ -39,6 +41,19 @@ export default function ReportDetailPage() {
       toast.error("Erro ao fechar relatorio.");
     } finally {
       setClosing(false);
+    }
+  }
+
+  async function handleExportPdf() {
+    try {
+      setExportingPdf(true);
+      await generatePdf(report);
+      toast.success("PDF exportado com sucesso.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar PDF.");
+    } finally {
+      setExportingPdf(false);
     }
   }
 
@@ -93,6 +108,16 @@ export default function ReportDetailPage() {
               {closing ? "Fechando..." : "Fechar Relatorio"}
             </button>
           )}
+          <button
+            onClick={handleExportPdf}
+            disabled={exportingPdf}
+            className="flex items-center gap-2 bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            {exportingPdf ? "Gerando PDF..." : "Exportar PDF"}
+          </button>
           <button
             onClick={handleDownload}
             disabled={generating}
