@@ -15,6 +15,7 @@ const TaskStatus = require("./TaskStatus");
 const WeeklyReport = require("./WeeklyReport");
 const Task = require("./Task");
 const AuditLog = require("./AuditLog");
+const UserWebhook = require("./UserWebhook");
 const { applyAuditHooksToAll } = require("../utils/auditHooks");
 
 // Um usuário pertence a um cargo
@@ -41,7 +42,11 @@ Task.belongsTo(ActivityType, { foreignKey: "activity_type_id", as: "activityType
 TaskStatus.hasMany(Task, { foreignKey: "task_status_id", as: "tasks" });
 Task.belongsTo(TaskStatus, { foreignKey: "task_status_id", as: "taskStatus" });
 
-module.exports = { User, ActivityType, TaskStatus, WeeklyReport, Task, UserCargos, Setting, AuditLog };
+// Um usuário tem até 5 webhooks
+User.hasMany(UserWebhook, { foreignKey: "user_id", as: "webhooks" });
+UserWebhook.belongsTo(User, { foreignKey: "user_id", as: "user" });
+
+module.exports = { User, ActivityType, TaskStatus, WeeklyReport, Task, UserCargos, Setting, AuditLog, UserWebhook };
 
 // Aplica hooks de auditoria em todos os models que representam dados de negócio.
 // AuditLog e Setting são excluídos intencionalmente:
