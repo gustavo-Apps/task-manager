@@ -22,6 +22,7 @@ export default function ReportDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [notifying, setNotifying] = useState(false);
 
   useEffect(() => {
     api.get(`/reports/${id}`)
@@ -36,11 +37,31 @@ export default function ReportDetailPage() {
       setClosing(true);
       const res = await api.post(`/reports/${id}/close`);
       setReport(res.data.data.report);
-      toast.success("Relatorio fechado.");
-    } catch {
-      toast.error("Erro ao fechar relatorio.");
+      toast.success("Relatorio fechado. Webhooks configurados foram notificados automaticamente.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erro ao fechar relatorio.");
     } finally {
       setClosing(false);
+    }
+  }
+
+  async function handleNotify() {
+    if (!window.confirm(
+      "Enviar webhook agora?\n\nIsso disparara uma notificacao para todos os seus webhooks ativos com os dados deste relatorio."
+    )) return;
+    try {
+      setNotifying(true);
+      const res = await api.post(`/reports/${id}/notify`);
+      const { sent, failed, message } = res.data.data;
+      if (failed > 0) {
+        toast.error(message);
+      } else {
+        toast.success(message);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erro ao enviar webhook.");
+    } finally {
+      setNotifying(false);
     }
   }
 
@@ -108,6 +129,17 @@ export default function ReportDetailPage() {
               {closing ? "Fechando..." : "Fechar Relatorio"}
             </button>
           )}
+          <button
+            onClick={handleNotify}
+            disabled={notifying}
+            title="Dispara manualmente o webhook para todos os seus destinos ativos"
+            className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 border border-gray-500 text-gray-200 text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            {notifying ? "Enviando..." : "Enviar Webhook"}
+          </button>
           <button
             onClick={handleExportPdf}
             disabled={exportingPdf}

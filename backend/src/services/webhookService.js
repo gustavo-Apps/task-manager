@@ -70,8 +70,13 @@ async function dispatch(userId, payload) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(8000),
-      }).then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      }).then(async (res) => {
+        if (!res.ok) {
+          // Tenta capturar mensagem de erro do Discord/destino
+          let detail = "";
+          try { detail = await res.text(); } catch { /* ignore */ }
+          throw new Error(`HTTP ${res.status}${detail ? ` — ${detail.slice(0, 200)}` : ""}`);
+        }
         return { id: wh.id, label: wh.label, status: "ok" };
       })
     )

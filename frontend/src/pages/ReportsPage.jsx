@@ -26,10 +26,11 @@ export default function ReportsPage() {
 
   const [reports, setReports]           = useState([]);
   const [loading, setLoading]           = useState(true);
-  const [downloading, setDownloading]     = useState(false);
-  const [exportingPdf, setExportingPdf]   = useState(null); // report.id em progresso
+  const [downloading, setDownloading]       = useState(false);
+  const [exportingPdf, setExportingPdf]     = useState(null);
   const [sendingClickUp, setSendingClickUp] = useState(null);
-  const [page, setPage]                   = useState(1);
+  const [notifying, setNotifying]           = useState(null); // report.id em progresso
+  const [page, setPage]                     = useState(1);
   const [totalPages, setTotalPages]       = useState(1);
   const [total, setTotal]                 = useState(0);
 
@@ -107,6 +108,26 @@ export default function ReportsPage() {
       toast.error("Erro ao gerar PDF.");
     } finally {
       setExportingPdf(null);
+    }
+  }
+
+  async function handleNotify(report) {
+    if (!window.confirm(
+      `Enviar webhook para "Semana ${report.week_number}/${report.year}"?\n\nIsso disparara uma notificacao para todos os seus webhooks ativos.`
+    )) return;
+    try {
+      setNotifying(report.id);
+      const res = await api.post(`/reports/${report.id}/notify`);
+      const { sent, failed, message } = res.data.data;
+      if (failed > 0) {
+        toast.error(message);
+      } else {
+        toast.success(message);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erro ao enviar webhook.");
+    } finally {
+      setNotifying(null);
     }
   }
 
@@ -316,6 +337,17 @@ export default function ReportsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
                   {exportingPdf === report.id ? "..." : "PDF"}
+                </button>
+                <button
+                  onClick={() => handleNotify(report)}
+                  disabled={notifying === report.id}
+                  title="Enviar webhook manualmente para este relatorio"
+                  className="flex items-center gap-1 text-xs text-yellow-400 hover:text-yellow-300 disabled:opacity-50 px-2 py-1 rounded hover:bg-gray-600 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {notifying === report.id ? "..." : "Webhook"}
                 </button>
                 <button
                   onClick={() => handleSendClickUp(report)}
