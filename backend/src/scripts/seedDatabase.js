@@ -1,11 +1,18 @@
 /**
- * Script: popula o banco com dados iniciais (seed).
+ * Seed — popula o banco com dados iniciais.
  *
- * Uso: node src/scripts/seedDatabase.js
+ * Uso:
+ *   cd backend
+ *   npm run db:seed
  *
- * - Cria os tipos de atividade padrão
- * - Cria um usuário admin inicial
- * - Seguro para rodar múltiplas vezes (usa findOrCreate)
+ * O que cria:
+ *   - 5 status de tarefa (Pendente, Em andamento, Concluido, Bloqueado, Cancelado)
+ *   - 8 tipos de atividade (Teste, Validação, Reunião, etc.)
+ *   - 5 cargos (Desenvolvedor, Analista de Testes, etc.)
+ *   - 1 usuário admin padrão:\n *       Email: admin@weeklyreports.local
+ *       Senha: Admin@12345   ← troque no primeiro acesso (Perfil no menu)
+ *
+ * Seguro para rodar mais de uma vez — usa findOrCreate, não duplica dados.
  */
 
 require("dotenv").config();
@@ -14,86 +21,102 @@ const bcrypt = require("bcryptjs");
 const { sequelize } = require("../config/database");
 const { User, ActivityType, TaskStatus, UserCargos } = require("../models");
 
+// ─── Dados iniciais ───────────────────────────────────────────────────────────
+
 const TASK_STATUSES = [
-  { name: "Pendente",      description: "Aguardando inicio",          color: "#F59E0B", sort_order: 1 },
-  { name: "Em andamento",  description: "Sendo trabalhado agora",     color: "#3B82F6", sort_order: 2 },
-  { name: "Concluido",     description: "Finalizado com sucesso",     color: "#10B981", sort_order: 3 },
-  { name: "Bloqueado",     description: "Impedido por dependencia",   color: "#EF4444", sort_order: 4 },
-  { name: "Cancelado",     description: "Nao sera mais realizado",    color: "#6B7280", sort_order: 5 },
+  { name: "Pendente",     description: "Aguardando início",         color: "#F59E0B", sort_order: 1 },
+  { name: "Em andamento", description: "Sendo trabalhado agora",    color: "#3B82F6", sort_order: 2 },
+  { name: "Concluido",    description: "Finalizado com sucesso",    color: "#10B981", sort_order: 3 },
+  { name: "Bloqueado",    description: "Impedido por dependência",  color: "#EF4444", sort_order: 4 },
+  { name: "Cancelado",    description: "Não será mais realizado",   color: "#6B7280", sort_order: 5 },
 ];
 
 const ACTIVITY_TYPES = [
-  { name: "Teste", description: "Execucao de casos de teste", color: "#3B82F6" },
-  { name: "Validacao", description: "Validacao de funcionalidade ou correcao", color: "#10B981" },
-  { name: "Reuniao", description: "Reuniao de equipe ou alinhamento", color: "#F59E0B" },
-  { name: "Documentacao", description: "Elaboracao ou revisao de documentos", color: "#8B5CF6" },
-  { name: "Desenvolvimento", description: "Implementacao de funcionalidade", color: "#EF4444" },
-  { name: "Analise", description: "Analise de requisito, bug ou sistema", color: "#06B6D4" },
-  { name: "Deploy", description: "Publicacao ou configuracao de ambiente", color: "#EC4899" },
-  { name: "Suporte", description: "Suporte a usuarios ou equipes", color: "#6B7280" },
+  { name: "Teste",          description: "Execução de casos de teste",                 color: "#3B82F6" },
+  { name: "Validacao",      description: "Validação de funcionalidade ou correção",    color: "#10B981" },
+  { name: "Reuniao",        description: "Reunião de equipe ou alinhamento",           color: "#F59E0B" },
+  { name: "Documentacao",   description: "Elaboração ou revisão de documentos",        color: "#8B5CF6" },
+  { name: "Desenvolvimento",description: "Implementação de funcionalidade",            color: "#EF4444" },
+  { name: "Analise",        description: "Análise de requisito, bug ou sistema",       color: "#06B6D4" },
+  { name: "Deploy",         description: "Publicação ou configuração de ambiente",     color: "#EC4899" },
+  { name: "Suporte",        description: "Suporte a usuários ou equipes",              color: "#6B7280" },
 ];
+
 const USER_CARGOS = [
-  { name: "Desenvolvedor", description: "Responsavel por implementar funcionalidades e corrigir bugs" },
-  { name: "Analista de Testes", description: "Responsavel por criar e executar casos de teste" },
-  { name: "Gerente de Projeto", description: "Responsavel por planejar, coordenar e acompanhar o progresso do projeto" },
-  { name: "Analista de Requisitos", description: "Responsavel por coletar, analisar e documentar os requisitos do sistema" },
-  { name: "Engenheiro de DevOps", description: "Responsavel por configurar e manter os ambientes de desenvolvimento, teste e producao" },
+  { name: "Desenvolvedor",         description: "Responsável por implementar funcionalidades e corrigir bugs" },
+  { name: "Analista de Testes",    description: "Responsável por criar e executar casos de teste" },
+  { name: "Gerente de Projeto",    description: "Responsável por planejar, coordenar e acompanhar o progresso" },
+  { name: "Analista de Requisitos",description: "Responsável por coletar, analisar e documentar requisitos" },
+  { name: "Engenheiro de DevOps",  description: "Responsável por configurar e manter ambientes de infra" },
 ];
+
+const ADMIN_USER = {
+  username:      "admin",
+  email:         "admin@weeklyreports.local",
+  password:      "Admin@12345",  // troque no primeiro acesso
+  role:          "admin",
+  cargo:         1,
+};
+
+// ─── Seed ─────────────────────────────────────────────────────────────────────
 
 async function seed() {
   try {
+    console.log("Conectando ao banco...");
     await sequelize.authenticate();
+
+    console.log("Sincronizando schema (alter)...");
     await sequelize.sync({ alter: true });
 
     // Status de tarefa
-    for (const status of TASK_STATUSES) {
-      const [, created] = await TaskStatus.findOrCreate({
-        where: { name: status.name },
-        defaults: status,
-      });
-      console.log(`TaskStatus "${status.name}": ${created ? "criado" : "ja existe"}`);
+    console.log("\nStatus de tarefa:");
+    for (const s of TASK_STATUSES) {
+      const [, created] = await TaskStatus.findOrCreate({ where: { name: s.name }, defaults: s });
+      console.log(`  ${created ? "✔ criado " : "· existe "} ${s.name}`);
     }
 
     // Tipos de atividade
-    for (const type of ACTIVITY_TYPES) {
-      const [, created] = await ActivityType.findOrCreate({
-        where: { name: type.name },
-        defaults: type,
-      });
-      console.log(`ActivityType "${type.name}": ${created ? "criado" : "ja existe"}`);
-    }
-    for (const cargo of USER_CARGOS) {
-      const [, created] = await UserCargos.findOrCreate({
-        where: {
-          name: cargo.name,
-          description: cargo.description
-        },
-        defaults: cargo,
-      });
-      console.log(`UserCargo "${cargo.name}": ${created ? "criado" : "ja existe"}`);
+    console.log("\nTipos de atividade:");
+    for (const t of ACTIVITY_TYPES) {
+      const [, created] = await ActivityType.findOrCreate({ where: { name: t.name }, defaults: t });
+      console.log(`  ${created ? "✔ criado " : "· existe "} ${t.name}`);
     }
 
-    // Usuário admin padrão (troque a senha antes de ir para produção!)
-    const [adminUser, created] = await User.unscoped().findOrCreate({
-      where: { email: "admin@weeklyreports.local" },
+    // Cargos
+    console.log("\nCargos:");
+    for (const c of USER_CARGOS) {
+      const [, created] = await UserCargos.findOrCreate({ where: { name: c.name }, defaults: c });
+      console.log(`  ${created ? "✔ criado " : "· existe "} ${c.name}`);
+    }
+
+    // Usuário admin
+    console.log("\nUsuário admin:");
+    const [, created] = await User.unscoped().findOrCreate({
+      where: { email: ADMIN_USER.email },
       defaults: {
-        username: "admin",
-        email: "admin@weeklyreports.local",
-        password_hash: await bcrypt.hash("Admin@12345", 12),
-        role: "admin",
-        cargo: 1,
+        username:      ADMIN_USER.username,
+        email:         ADMIN_USER.email,
+        password_hash: await bcrypt.hash(ADMIN_USER.password, 12),
+        role:          ADMIN_USER.role,
+        cargo:         ADMIN_USER.cargo,
       },
     });
 
-    console.log(`Usuario admin: ${created ? "criado" : "ja existe"}`);
     if (created) {
-      console.log("  Email: admin@weeklyreports.local");
-      console.log("  Senha: Admin@12345  ← troque em producao!");
+      console.log("  ✔ criado");
+      console.log("  ┌─────────────────────────────────────────┐");
+      console.log(`  │  Email: ${ADMIN_USER.email.padEnd(32)}│`);
+      console.log(`  │  Senha: ${ADMIN_USER.password.padEnd(32)}│`);
+      console.log("  │  ⚠  Troque a senha no primeiro acesso!  │");
+      console.log("  └─────────────────────────────────────────┘");
+    } else {
+      console.log("  · já existe");
     }
-    console.log("\nSeed concluido com sucesso.");
+
+    console.log("\nSeed concluído com sucesso.");
     process.exit(0);
   } catch (err) {
-    console.error("Erro no seed:", err.message);
+    console.error("\nErro no seed:", err.message);
     process.exit(1);
   }
 }

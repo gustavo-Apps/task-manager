@@ -14,6 +14,7 @@ router.use("/lookups", require("./lookup.routes"));
 router.use("/settings", require("./settings.routes"));
 router.use("/clickup", require("./clickup.routes"));
 router.use("/azure", require("./azure.routes"));
-router.use("/admin", require("./admin.routes"));
+router.use("/admin",    require("./admin.routes"));
+router.use("/webhooks", require("./webhook.routes"));
 
 module.exports = router;

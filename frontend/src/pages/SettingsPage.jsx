@@ -246,6 +246,76 @@ export default function SettingsPage() {
   const [username, setUsername]             = useState("");
   const fieldRefs = useRef({});
 
+  // ── Webhooks ───────────────────────────────────────────────────────────────
+  const [webhooks, setWebhooks]             = useState([]);
+  const [whLoading, setWhLoading]           = useState(false);
+  const [whForm, setWhForm]                 = useState({ label: "", url: "" });
+  const [whSaving, setWhSaving]             = useState(false);
+  const [whEdit, setWhEdit]                 = useState(null); // id em edição
+  const [whEditForm, setWhEditForm]         = useState({});
+  const [whTesting, setWhTesting]           = useState(null); // id testando
+  const MAX_WEBHOOKS = 5;
+
+  function loadWebhooks() {
+    setWhLoading(true);
+    api.get("/webhooks")
+      .then((r) => setWebhooks(r.data.data.webhooks ?? []))
+      .catch(() => toast.error("Erro ao carregar webhooks."))
+      .finally(() => setWhLoading(false));
+  }
+
+  async function handleWhCreate(e) {
+    e.preventDefault();
+    if (webhooks.length >= MAX_WEBHOOKS) { toast.error(`Limite de ${MAX_WEBHOOKS} webhooks atingido.`); return; }
+    setWhSaving(true);
+    try {
+      const r = await api.post("/webhooks", whForm);
+      setWebhooks((p) => [...p, r.data.data.webhook]);
+      setWhForm({ label: "", url: "" });
+      toast.success("Webhook adicionado.");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Erro ao salvar webhook.");
+    } finally { setWhSaving(false); }
+  }
+
+  async function handleWhUpdate(id) {
+    try {
+      const r = await api.patch(`/webhooks/${id}`, whEditForm);
+      setWebhooks((p) => p.map((w) => w.id === id ? r.data.data.webhook : w));
+      setWhEdit(null);
+      toast.success("Webhook atualizado.");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Erro ao atualizar webhook.");
+    }
+  }
+
+  async function handleWhToggle(wh) {
+    try {
+      const r = await api.patch(`/webhooks/${wh.id}`, { enabled: !wh.enabled });
+      setWebhooks((p) => p.map((w) => w.id === wh.id ? r.data.data.webhook : w));
+    } catch { toast.error("Erro ao atualizar webhook."); }
+  }
+
+  async function handleWhDelete(id) {
+    if (!window.confirm("Remover este webhook?")) return;
+    try {
+      await api.delete(`/webhooks/${id}`);
+      setWebhooks((p) => p.filter((w) => w.id !== id));
+      toast.success("Webhook removido.");
+    } catch { toast.error("Erro ao remover webhook."); }
+  }
+
+  async function handleWhTest(wh) {
+    setWhTesting(wh.id);
+    try {
+      const r = await api.post(`/webhooks/${wh.id}/test`);
+      if (r.data.data.ok) toast.success(`Teste OK: ${wh.label}`);
+      else toast.error(`Falha no teste: ${r.data.data.message}`);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Erro no teste.");
+    } finally { setWhTesting(null); }
+  }
+
   useEffect(() => {
     fetchSettings();
     try {
@@ -256,6 +326,11 @@ export default function SettingsPage() {
       }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "webhooks") loadWebhooks();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   async function fetchSettings() {
     try {
@@ -372,9 +447,10 @@ export default function SettingsPage() {
       {/* Abas principais */}
       <div className="flex gap-1 mb-5 border-b border-gray-600">
         {[
-          { id: "clickup", label: "Integracao ClickUp" },
-          { id: "azure",   label: "Azure DevOps"       },
-          { id: "md",      label: "Relatorio .md"      },
+          { id: "clickup",  label: "Integracao ClickUp" },
+          { id: "azure",    label: "Azure DevOps"       },
+          { id: "md",       label: "Relatorio .md"      },
+          { id: "webhooks", label: "Webhooks"           },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -651,6 +727,144 @@ export default function SettingsPage() {
           </div>
         )}
       </form>
+
+      {/* ═══ Aba Webhooks ═════════════════════════════════════════════════════════ */}
+      {activeTab === "webhooks" && (
+        <div className="space-y-5 max-w-xl">
+
+          {/* Cabecalho */}
+          <div className="bg-gray-800 border border-gray-600 rounded-lg p-5">
+            <h2 className="text-sm font-semibold text-white">Webhooks</h2>
+            <p className="text-xs text-gray-400 mt-1">
+              Envie o relatorio automaticamente para ate {MAX_WEBHOOKS} destinos (Discord, Slack, Teams, etc.)
+              quando voce gerar ou fechar um relatorio.
+            </p>
+          </div>
+
+          {/* Lista de webhooks existentes */}
+          {whLoading ? (
+            <div className="space-y-2 animate-pulse">
+              {[1,2].map(i => <div key={i} className="bg-gray-700 border border-gray-600 rounded-lg h-16" />)}
+            </div>
+          ) : webhooks.length === 0 ? (
+            <div className="border border-dashed border-gray-600 rounded-lg p-8 text-center">
+              <p className="text-sm text-gray-400">Nenhum webhook cadastrado ainda.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {webhooks.map((wh) => (
+                <div key={wh.id} className="bg-gray-800 border border-gray-600 rounded-lg px-4 py-3">
+                  {whEdit === wh.id ? (
+                    // Modo edicao inline
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          value={whEditForm.label ?? ""}
+                          onChange={(e) => setWhEditForm(p => ({ ...p, label: e.target.value }))}
+                          placeholder="Label"
+                          className="flex-1 bg-gray-700 border border-gray-500 text-gray-100 text-xs rounded px-3 py-1.5 focus:outline-none focus:border-blue-400"
+                        />
+                        <button
+                          onClick={() => handleWhUpdate(wh.id)}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded transition-colors"
+                        >Salvar</button>
+                        <button
+                          onClick={() => setWhEdit(null)}
+                          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs rounded transition-colors"
+                        >Cancelar</button>
+                      </div>
+                      <input
+                        value={whEditForm.url ?? ""}
+                        onChange={(e) => setWhEditForm(p => ({ ...p, url: e.target.value }))}
+                        placeholder="https://..."
+                        className="w-full bg-gray-700 border border-gray-500 text-gray-100 text-xs rounded px-3 py-1.5 focus:outline-none focus:border-blue-400 font-mono"
+                      />
+                    </div>
+                  ) : (
+                    // Modo visualizacao
+                    <div className="flex items-center gap-3">
+                      {/* Toggle enabled */}
+                      <button
+                        onClick={() => handleWhToggle(wh)}
+                        title={wh.enabled ? "Ativo — clique para desativar" : "Inativo — clique para ativar"}
+                        className={`w-8 h-4 rounded-full transition-colors shrink-0 relative ${
+                          wh.enabled ? "bg-green-600" : "bg-gray-600"
+                        }`}
+                      >
+                        <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all ${
+                          wh.enabled ? "left-[18px]" : "left-0.5"
+                        }`} />
+                      </button>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white font-medium truncate">{wh.label}</p>
+                        <p className="text-xs text-gray-400 font-mono truncate">{wh.url}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleWhTest(wh)}
+                          disabled={whTesting === wh.id || !wh.enabled}
+                          className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 transition-colors"
+                        >{whTesting === wh.id ? "..." : "Testar"}</button>
+                        <button
+                          onClick={() => { setWhEdit(wh.id); setWhEditForm({ label: wh.label, url: wh.url }); }}
+                          className="text-xs text-gray-300 hover:text-white transition-colors"
+                        >Editar</button>
+                        <button
+                          onClick={() => handleWhDelete(wh.id)}
+                          className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                        >Remover</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Formulario de adicao */}
+          {webhooks.length < MAX_WEBHOOKS && (
+            <form onSubmit={handleWhCreate} className="bg-gray-800 border border-gray-600 rounded-lg p-5 space-y-3">
+              <p className="text-xs font-semibold text-gray-300 uppercase tracking-wide">
+                Adicionar webhook ({webhooks.length}/{MAX_WEBHOOKS})
+              </p>
+              <div className="flex gap-2">
+                <input
+                  required
+                  value={whForm.label}
+                  onChange={(e) => setWhForm(p => ({ ...p, label: e.target.value }))}
+                  placeholder='Label (ex: "Discord QA")'
+                  maxLength={100}
+                  className="w-40 bg-gray-700 border border-gray-500 text-gray-100 placeholder-gray-400 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-400"
+                />
+                <input
+                  required
+                  type="url"
+                  value={whForm.url}
+                  onChange={(e) => setWhForm(p => ({ ...p, url: e.target.value }))}
+                  placeholder="https://discord.com/api/webhooks/..."
+                  className="flex-1 bg-gray-700 border border-gray-500 text-gray-100 placeholder-gray-400 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-400 font-mono"
+                />
+                <button
+                  type="submit"
+                  disabled={whSaving}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded transition-colors shrink-0"
+                >{whSaving ? "Salvando..." : "+ Adicionar"}</button>
+              </div>
+              <p className="text-xs text-gray-500">
+                Compatible com Discord, Slack, Teams, Mattermost e qualquer endpoint que aceite POST JSON.
+              </p>
+            </form>
+          )}
+
+          {webhooks.length >= MAX_WEBHOOKS && (
+            <p className="text-xs text-yellow-400 text-center">
+              Limite de {MAX_WEBHOOKS} webhooks atingido. Remova um para adicionar outro.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

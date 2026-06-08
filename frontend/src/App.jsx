@@ -120,7 +120,7 @@ export default function App() {
           <Route
             path="/admin"
             element={
-              <PrivateRoute>
+              <PrivateRoute requiredRole="admin">
                 <Layout><AdminPage /></Layout>
               </PrivateRoute>
             }
