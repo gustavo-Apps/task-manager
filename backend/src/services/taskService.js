@@ -202,15 +202,18 @@ async function checkTicketPending(userId, azureTicketId) {
 }
 
 /**
- * Lista todas as tasks com azure_ticket_id num intervalo de datas.
+ * Lista todas as tasks com azure_ticket_id num intervalo de datas, com paginação.
  *
  * @param {number} userId
  * @param {string} from  YYYY-MM-DD
  * @param {string} to    YYYY-MM-DD
- * @returns {Promise<Task[]>}
+ * @param {{ page?: number, limit?: number }} options
+ * @returns {Promise<{ tickets: Task[], total: number, page: number, totalPages: number }>}
  */
-async function listTickets(userId, from, to) {
-  return Task.findAll({
+async function listTickets(userId, from, to, { page = 1, limit = 20 } = {}) {
+  const offset = (page - 1) * limit;
+
+  const { rows: tickets, count: total } = await Task.findAndCountAll({
     where: {
       user_id: userId,
       azure_ticket_id: { [Op.not]: null },
@@ -222,7 +225,93 @@ async function listTickets(userId, from, to) {
       { model: WeeklyReport, as: "weeklyReport", attributes: ["week_number", "year"] },
     ],
     order: [["task_date", "ASC"]],
+    limit,
+    offset,
+    distinct: true,
+  });
+
+  return {
+    tickets,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+}
+
+/**
+ * Duplica uma tarefa existente, ajustando task_date para hoje e zerando task_end_date.
+ *
+ * @param {number} taskId
+ * @param {number} userId
+ * @returns {Promise<Task>}
+ */
+async function duplicateTask(taskId, userId) {
+  const original = await getTask(taskId, userId);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Recalcula semana/relatório para a data de hoje (igual ao createTask)
+  const { weekNumber, year } = getISOWeek(today);
+  const { startDate, endDate } = getWeekBounds(weekNumber, year);
+
+  const [weeklyReport] = await WeeklyReport.findOrCreate({
+    where: { user_id: userId, week_number: weekNumber, year },
+    defaults: {
+      user_id: userId,
+      week_number: weekNumber,
+      year,
+      start_date: startDate,
+      end_date: endDate,
+      status: "open",
+    },
+  });
+
+  const newTask = await Task.create({
+    weekly_report_id: weeklyReport.id,
+    user_id: userId,
+    activity_type_id: original.activity_type_id,
+    title: original.title,
+    description: original.description || null,
+    task_date: today,
+    task_end_date: null,
+    task_status_id: original.task_status_id,
+    discord_link: original.discord_link || null,
+    azure_ticket_id: original.azure_ticket_id || null,
+    notes: original.notes || null,
+  });
+
+  return Task.findByPk(newTask.id, {
+    include: [
+      { model: ActivityType, as: "activityType" },
+      { model: TaskStatus, as: "taskStatus" },
+      { model: WeeklyReport, as: "weeklyReport" },
+    ],
   });
 }
 
-module.exports = { createTask, listTasks, getTask, updateTask, deleteTask, checkTicketPending, listTickets };
+/**
+ * Lista todas as tasks do usuario que NAO estao com status "Concluido".
+ *
+ * @param {number} userId
+ * @returns {Promise<Task[]>}
+ */
+async function listPendingTasks(userId) {
+  const doneStatus = await TaskStatus.findOne({ where: { name: "Concluido" } });
+
+  const where = { user_id: userId };
+  if (doneStatus) {
+    where.task_status_id = { [Op.ne]: doneStatus.id };
+  }
+
+  return Task.findAll({
+    where,
+    include: [
+      { model: ActivityType, as: "activityType" },
+      { model: TaskStatus,   as: "taskStatus"   },
+      { model: WeeklyReport, as: "weeklyReport", attributes: ["week_number", "year", "start_date", "end_date"] },
+    ],
+    order: [["task_date", "DESC"], [{ model: TaskStatus, as: "taskStatus" }, "name", "ASC"]],
+  });
+}
+
+module.exports = { createTask, listTasks, getTask, updateTask, deleteTask, checkTicketPending, listTickets, duplicateTask, listPendingTasks };

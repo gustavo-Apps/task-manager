@@ -1,4 +1,4 @@
-﻿# Roadmap - Weekly Reports
+﻿# Roadmap — Weekly Reports
 
 ## Fase 1 - Backend/API
 
@@ -74,11 +74,16 @@
 - [x] `ReportsPage` — controles de paginacao adicionados (Anterior / Pagina X de Y / Proxima)
 - [x] `validateEnv.js` — `DB_PASSWORD` removido das variaveis obrigatorias (banco local sem senha)
 
-### Sprint 8 - Polimento Final
-- [ ] Pagina de perfil do usuario (alterar nome, email, cargo, senha)
-- [ ] Confirmacao antes de fechar um relatorio
-- [ ] Filtros no Dashboard: por tipo de atividade, por status
-- [ ] Busca rapida de tarefas por titulo
+### Sprint 8 - Polimento Final (concluida)
+- [x] Pagina de perfil do usuario — username e senha editaveis; email/cargo readonly (backend nao suporta)
+- [x] Confirmacao antes de fechar um relatorio (window.confirm + POST /api/reports/:id/close)
+- [x] Filtros no Dashboard: por tipo de atividade (?type=) e por status (?status=), persistidos na URL
+- [x] Busca rapida de tarefas por titulo (?q=), persistida na URL
+- [x] Ordenacao por coluna no Dashboard (Data, Tipo, Status, Ticket) com icones ▲/▼, persistida na URL
+- [x] Ordenacao por coluna na TicketsPage com icones ▲/▼
+- [x] Toggle de status inline por card no Dashboard (PATCH /api/tasks/:id/status)
+- [x] Duplicar tarefa por card no Dashboard (POST /api/tasks/:id/duplicate)
+- [x] navigate(-1) no TaskFormPage — filtros preservados ao voltar de edicao
 
 ### Sprint 9 - Painel Administrativo
 - [ ] Pagina /admin protegida por role=admin

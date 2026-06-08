@@ -25,7 +25,7 @@ const sequelize = new Sequelize(dbName, dbUser, dbPass, {
   host: dbHost,
   port: Number(dbPort),
   dialect: "mysql",
-  logging: process.env.NODE_ENV === "development" ? console.log : false,
+  logging: false,
   pool: {
     max: 10,
     min: 0,

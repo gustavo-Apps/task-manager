@@ -17,6 +17,10 @@ const Task = require("./Task");
 const AuditLog = require("./AuditLog");
 const { applyAuditHooksToAll } = require("../utils/auditHooks");
 
+// Um usuário pertence a um cargo
+UserCargos.hasMany(User, { foreignKey: "cargo", as: "users" });
+User.belongsTo(UserCargos, { foreignKey: "cargo", as: "userCargo" });
+
 // Um usuário tem vários relatórios semanais
 User.hasMany(WeeklyReport, { foreignKey: "user_id", as: "weeklyReports" });
 WeeklyReport.belongsTo(User, { foreignKey: "user_id", as: "user" });

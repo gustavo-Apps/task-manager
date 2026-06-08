@@ -44,7 +44,10 @@ export default function DashboardPage() {
   const preset       = searchParams.get("preset") || "current";
   const dateParam    = searchParams.get("date")   || "";
   const statusFilter = searchParams.get("status") || "";
+  const typeFilter   = searchParams.get("type")   || "";
   const search       = searchParams.get("q")      || "";
+  const sortCol      = searchParams.get("sort")   || "task_date";
+  const sortDir      = searchParams.get("dir")    || "asc";
 
   function setPreset(value) {
     setSearchParams((p) => { p.set("preset", value); if (value !== "custom") p.delete("date"); return p; }, { replace: true });
@@ -55,14 +58,43 @@ export default function DashboardPage() {
   function setStatusFilter(value) {
     setSearchParams((p) => { value ? p.set("status", value) : p.delete("status"); return p; }, { replace: true });
   }
+  function setTypeFilter(value) {
+    setSearchParams((p) => { value ? p.set("type", value) : p.delete("type"); return p; }, { replace: true });
+  }
   function setSearch(value) {
     setSearchParams((p) => { value ? p.set("q", value) : p.delete("q"); return p; }, { replace: true });
+  }
+  function handleSort(col) {
+    setSearchParams((p) => {
+      if (p.get("sort") === col) {
+        p.set("dir", p.get("dir") === "asc" ? "desc" : "asc");
+      } else {
+        p.set("sort", col);
+        p.set("dir", "asc");
+      }
+      return p;
+    }, { replace: true });
+  }
+  function SortBtn({ col, label }) {
+    const active = sortCol === col;
+    return (
+      <button
+        onClick={() => handleSort(col)}
+        className={`px-3 py-1.5 rounded text-xs font-medium transition-colors select-none ${
+          active
+            ? "bg-gray-600 text-white"
+            : "bg-gray-700 text-gray-400 hover:text-white hover:bg-gray-600"
+        }`}
+      >
+        {label} {active ? (sortDir === "asc" ? "▲" : "▼") : ""}
+      </button>
+    );
   }
 
   const [report, setReport]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const { taskStatuses } = useLookups();
+  const { taskStatuses, activityTypes } = useLookups();
 
   function resolveDate() {
     if (preset === "custom") return dateParam || toISO(new Date());
@@ -122,16 +154,73 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleStatusChange(taskId, value) {
+    try {
+      const res = await api.patch(`/tasks/${taskId}/status`, { task_status_id: Number(value) });
+      const updated = res?.data?.data?.task;
+      setReport((prev) => ({
+        ...prev,
+        tasks: prev.tasks.map((t) => (t.id === taskId ? updated : t)),
+      }));
+      toast.success("Status atualizado.");
+    } catch {
+      toast.error("Erro ao atualizar status.");
+    }
+  }
+
+  async function handleDuplicateTask(taskId) {
+    try {
+      const res = await api.post(`/tasks/${taskId}/duplicate`);
+      const newTask = res?.data?.data?.task;
+      setReport((prev) => ({
+        ...prev,
+        tasks: [...prev.tasks, newTask],
+      }));
+      toast.success("Tarefa duplicada.");
+    } catch {
+      toast.error("Erro ao duplicar tarefa.");
+    }
+  }
+
+  function getSortedTasks(tasks) {
+    return [...tasks].sort((a, b) => {
+      let aVal, bVal;
+      if (sortCol === "task_date") {
+        aVal = a.task_date ?? "";
+        bVal = b.task_date ?? "";
+      } else if (sortCol === "azure_ticket_id") {
+        if (!a.azure_ticket_id && !b.azure_ticket_id) return 0;
+        if (!a.azure_ticket_id) return 1;
+        if (!b.azure_ticket_id) return -1;
+        aVal = a.azure_ticket_id;
+        bVal = b.azure_ticket_id;
+      } else if (sortCol === "tipo") {
+        aVal = a.activityType?.name ?? "";
+        bVal = b.activityType?.name ?? "";
+      } else if (sortCol === "status") {
+        aVal = a.taskStatus?.name ?? "";
+        bVal = b.taskStatus?.name ?? "";
+      } else {
+        return 0;
+      }
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }
+
   const filteredTasks = report?.tasks?.filter((task) => {
     const matchStatus = statusFilter ? task.taskStatus?.id === Number(statusFilter) : true;
+    const matchType   = typeFilter   ? task.activityType?.id === Number(typeFilter)  : true;
     const q = search.trim().toLowerCase();
     const matchSearch = q
       ? task.title?.toLowerCase().includes(q) ||
         task.azure_ticket_id?.toLowerCase().includes(q) ||
         task.description?.toLowerCase().includes(q)
       : true;
-    return matchStatus && matchSearch;
+    return matchStatus && matchType && matchSearch;
   }) ?? [];
+
+  const sortedTasks = getSortedTasks(filteredTasks);
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -235,6 +324,17 @@ export default function DashboardPage() {
             ))}
           </select>
 
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="bg-gray-700 border border-gray-500 text-gray-100 text-xs rounded px-2 py-2 focus:outline-none focus:border-blue-500"
+          >
+            <option value="">Todos os tipos</option>
+            {activityTypes.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+
           <Link
             to="/tasks/new"
             className="bg-gray-700 hover:bg-gray-600 text-white text-xs font-medium px-3 py-2 rounded transition-colors"
@@ -270,7 +370,7 @@ export default function DashboardPage() {
       {!loading && (!report || filteredTasks.length === 0) ? (
         <div className="border border-dashed border-gray-600 rounded-lg p-10 text-center">
           <p className="text-sm text-gray-300">
-            {statusFilter || search
+            {statusFilter || typeFilter || search
               ? "Nenhuma atividade corresponde ao filtro."
               : report
               ? "Nenhuma atividade registrada nesta semana."
@@ -278,7 +378,7 @@ export default function DashboardPage() {
               ? "Selecione uma data para ver a semana."
               : "Nenhum relatorio encontrado para esta semana."}
           </p>
-          {!statusFilter && !search && preset === "current" && (
+          {!statusFilter && !typeFilter && !search && preset === "current" && (
             <Link to="/tasks/new" className="text-xs text-blue-400 hover:text-blue-300 hover:underline mt-3 inline-block">
               Adicionar primeira tarefa
             </Link>
@@ -286,7 +386,15 @@ export default function DashboardPage() {
         </div>
       ) : !loading ? (
         <div className="space-y-2">
-          {filteredTasks.map((task) => (
+          {/* Barra de ordenacao */}
+          <div className="flex items-center gap-1.5 pb-1">
+            <span className="text-xs text-gray-500 mr-1">Ordenar:</span>
+            <SortBtn col="task_date" label="Data" />
+            <SortBtn col="tipo" label="Tipo" />
+            <SortBtn col="status" label="Status" />
+            <SortBtn col="azure_ticket_id" label="Ticket" />
+          </div>
+          {sortedTasks.map((task) => (
             <div
               key={task.id}
               className="bg-gray-700 border border-gray-500 hover:border-gray-600 rounded-lg px-4 py-3 flex items-start justify-between gap-4 transition-colors"
@@ -305,9 +413,15 @@ export default function DashboardPage() {
                   {task.activityType && (
                     <Badge label={task.activityType.name} color={task.activityType.color} />
                   )}
-                  {task.taskStatus && (
-                    <Badge label={task.taskStatus.name} color={task.taskStatus.color} />
-                  )}
+                  <select
+                    value={task.taskStatus?.id ?? ""}
+                    onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                    className="text-xs bg-gray-700 border border-gray-500 rounded text-gray-100 px-1 py-0.5 focus:outline-none focus:border-blue-500"
+                  >
+                    {taskStatuses.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
                 </div>
                 {task.description && (
                   <p className="text-xs text-gray-300 mt-1.5 line-clamp-1">{task.description}</p>
@@ -321,6 +435,12 @@ export default function DashboardPage() {
                 >
                   Editar
                 </Link>
+                <button
+                  onClick={() => handleDuplicateTask(task.id)}
+                  className="text-xs text-gray-300 hover:text-white transition-colors"
+                >
+                  Duplicar
+                </button>
                 <button
                   onClick={() => handleDeleteTask(task.id)}
                   className="text-xs text-red-400 hover:text-red-300 transition-colors"
