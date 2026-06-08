@@ -104,14 +104,14 @@
 
 ## Fase 3 - Evolucoes Futuras
 
-- [ ] Exportacao para PDF (Puppeteer ou jsPDF)
-- [ ] Integracao com Azure DevOps API (buscar titulo do ticket automaticamente)
-- [ ] Webhook para Discord ao fechar/gerar relatorio
+- [x] Exportacao para PDF (jsPDF + html2canvas, 100% no browser)
+- [x] Integracao com Azure DevOps API (buscar titulo do ticket automaticamente)
+- [x] Webhook para Discord/Slack/Teams ao fechar/gerar relatorio (max 5 por usuario)
 - [ ] Permissoes granulares (RBAC - admin/user/viewer)
 - [ ] Multi-tenant: relatorios por equipe, dashboard do gestor
 - [ ] Deploy em producao (Railway, Render, ou VPS)
 - [ ] Autenticacao via OAuth (Google/GitHub) como alternativa
-- [ ] Scheduler semanal: fechar relatorio e enviar .md por email/Discord automaticamente
+- [ ] Scheduler semanal: fechar relatorio e enviar .md por email automaticamente
 
 ---
 
