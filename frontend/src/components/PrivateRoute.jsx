@@ -1,13 +1,14 @@
 /**
  * Guarda de rota autenticada.
  * Redireciona para /login se não houver sessão ativa.
+ * Se `requiredRole` for informado, redireciona para / se o usuário não tiver o role.
  */
 
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-export default function PrivateRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
+export default function PrivateRoute({ children, requiredRole }) {
+  const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
     return (
@@ -17,5 +18,11 @@ export default function PrivateRoute({ children }) {
     );
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  if (requiredRole && user?.role !== requiredRole) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
 }

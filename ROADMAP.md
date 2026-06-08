@@ -85,14 +85,20 @@
 - [x] Duplicar tarefa por card no Dashboard (POST /api/tasks/:id/duplicate)
 - [x] navigate(-1) no TaskFormPage — filtros preservados ao voltar de edicao
 
-### Sprint 9 - Painel Administrativo
-- [ ] Pagina /admin protegida por role=admin
-- [ ] Listagem de todos os usuarios (nome, email, cargo, criado em)
-- [ ] Criar usuario via formulario (sem POST direto na API)
-- [ ] Editar usuario: nome, email, cargo, senha, role
-- [ ] Desativar/reativar usuario (soft delete ou campo is_active)
-- [ ] Backend: endpoint PATCH /api/admin/users/:id e POST /api/admin/users
-- [ ] Rota de frontend protegida: redireciona para /dashboard se nao for admin
+### Sprint 9 - Painel Administrativo (concluida)
+- [x] Pagina /admin protegida por role=admin
+- [x] Listagem de todos os usuarios (nome, email, cargo, role, status ativo/inativo)
+- [x] Criar usuario via formulario (POST /api/admin/users)
+- [x] Editar usuario: nome, email, cargo, role, is_active (PATCH /api/admin/users/:id)
+- [x] Reset de senha por admin (POST /api/admin/users/:id/reset-password)
+- [x] Excluir usuario com protecao contra auto-exclusao (DELETE /api/admin/users/:id)
+- [x] Backend: endpoints CRUD completos em /api/admin/users
+- [x] Rota de frontend protegida: redireciona para / se nao for admin (PrivateRoute requiredRole)
+- [x] Menu "Admin" visivel apenas para usuarios com role=admin
+- [x] Pagina de Pendentes: tarefas com status != Concluido de todas as semanas
+- [x] GET /api/tasks/pending — listagem filtrada por status != Concluido
+- [x] Associacao User belongsTo UserCargos registrada nos models
+- [x] GET /api/lookups/cargos — endpoint para popular dropdowns de cargo
 
 ---
 
