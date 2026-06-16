@@ -1,5 +1,8 @@
 # Weekly Reports
 
+[![GitHub](https://img.shields.io/badge/GitHub-gustavo--Apps%2Ftask--manager-181717?logo=github&logoColor=white)](https://github.com/gustavo-Apps/task-manager)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 Sistema de registro de atividades semanais para equipes de QA e desenvolvimento.
 Cada usuário registra suas tarefas ao longo da semana e gera um relatório em `.md` ou PDF ao final — com o layout personalizado por cargo e preferências individuais.
 
