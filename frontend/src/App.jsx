@@ -15,6 +15,11 @@ import TicketsPage      from "./pages/TicketsPage";
 import SettingsPage     from "./pages/SettingsPage";
 import ProfilePage      from "./pages/ProfilePage";
 import AdminPage        from "./pages/AdminPage";
+import ManagerDashboardPage     from "./pages/ManagerDashboardPage";
+import ManagerEmployeesPage     from "./pages/ManagerEmployeesPage";
+import ManagerEmployeeDetailPage from "./pages/ManagerEmployeeDetailPage";
+import ManagerActivitiesPage    from "./pages/ManagerActivitiesPage";
+import ManagerStatisticsPage    from "./pages/ManagerStatisticsPage";
 
 export default function App() {
   return (
@@ -122,6 +127,46 @@ export default function App() {
             element={
               <PrivateRoute requiredRole="admin">
                 <Layout><AdminPage /></Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/manager"
+            element={
+              <PrivateRoute requiredRole={["manager", "admin"]}>
+                <Layout><ManagerDashboardPage /></Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/manager/employees"
+            element={
+              <PrivateRoute requiredRole={["manager", "admin"]}>
+                <Layout><ManagerEmployeesPage /></Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/manager/employees/:id"
+            element={
+              <PrivateRoute requiredRole={["manager", "admin"]}>
+                <Layout><ManagerEmployeeDetailPage /></Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/manager/activities"
+            element={
+              <PrivateRoute requiredRole={["manager", "admin"]}>
+                <Layout><ManagerActivitiesPage /></Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/manager/statistics"
+            element={
+              <PrivateRoute requiredRole={["manager", "admin"]}>
+                <Layout><ManagerStatisticsPage /></Layout>
               </PrivateRoute>
             }
           />

@@ -1,5 +1,5 @@
 const bcrypt = require("bcryptjs");
-const { User, WeeklyReport, UserCargos } = require("../models");
+const { User, WeeklyReport, UserCargos, UserManager } = require("../models");
 const { success } = require("../utils/response");
 const AppError = require("../utils/AppError");
 
@@ -100,4 +100,61 @@ const listAllReports = asyncHandler(async (req, res) => {
   return success(res, { reports });
 });
 
-module.exports = { listUsers, createUser, updateUser, resetPassword, deleteUser, listAllReports };
+// GET /admin/managers
+const listManagers = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const managers = await User.findAll({
+    where: { role: "manager" },
+    attributes: ["id", "username", "email", "cargo", "is_active"],
+    include: [{ model: UserCargos, as: "userCargo", attributes: ["id", "name"] }],
+    order: [["username", "ASC"]],
+  });
+  return success(res, { managers });
+});
+
+// GET /admin/manager-links
+const listManagerLinks = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const links = await UserManager.findAll({
+    include: [
+      { model: User, as: "manager", attributes: ["id", "username", "email"] },
+      { model: User, as: "employee", attributes: ["id", "username", "email"] },
+    ],
+    order: [["manager_id", "ASC"], ["employee_id", "ASC"]],
+  });
+  return success(res, { links });
+});
+
+// POST /admin/manager-links
+const createManagerLink = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const { manager_id, employee_id } = req.body;
+  if (!manager_id || !employee_id) throw new AppError("manager_id e employee_id sao obrigatorios.", 400);
+
+  const manager = await User.findByPk(manager_id, { attributes: ["id", "role"] });
+  if (!manager) throw new AppError("Manager nao encontrado.", 404);
+  if (!["manager", "admin"].includes(manager.role))
+    throw new AppError("O usuario informado nao tem role manager ou admin.", 400);
+
+  const employee = await User.findByPk(employee_id, { attributes: ["id"] });
+  if (!employee) throw new AppError("Colaborador nao encontrado.", 404);
+
+  const [link, created] = await UserManager.findOrCreate({
+    where: { manager_id, employee_id },
+    defaults: { manager_id, employee_id },
+  });
+  if (!created) throw new AppError("Vinculo ja existe.", 409);
+  return success(res, { link }, 201);
+});
+
+// DELETE /admin/manager-links/:id
+const deleteManagerLink = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const link = await UserManager.findByPk(req.params.id);
+  if (!link) throw new AppError("Vinculo nao encontrado.", 404);
+  await link.destroy();
+  return success(res, { message: "Vinculo removido." });
+});
+
+module.exports = { listUsers, createUser, updateUser, resetPassword, deleteUser, listAllReports, listManagers, listManagerLinks, createManagerLink, deleteManagerLink };
+
