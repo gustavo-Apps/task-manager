@@ -6,8 +6,8 @@
 export default function Badge({ label, color = "#6B7280" }) {
   return (
     <span
-      className="inline-block px-2 py-0.5 rounded text-xs font-medium"
-      style={{ backgroundColor: color + "22", color }}
+      className="inline-block px-2 py-0.5 rounded text-xs font-semibold text-white whitespace-nowrap"
+      style={{ backgroundColor: color + "cc" }}
     >
       {label}
     </span>
