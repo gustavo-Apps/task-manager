@@ -3,6 +3,26 @@ import { fetchActivities } from "../lib/managerApi";
 import { fetchEmployees } from "../lib/managerApi";
 import toast from "react-hot-toast";
 import api from "../lib/api";
+import Badge from "../components/Badge";
+
+function formatDateBR(iso) {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+// Badge de status com cor semântica quando não tiver cor no banco
+function StatusBadge({ status }) {
+  if (!status) return <span className="text-gray-500">—</span>;
+  const color = status.color || (
+    /conclu/i.test(status.name)  ? "#22c55e" :
+    /bloq/i.test(status.name)    ? "#ef4444" :
+    /andamento/i.test(status.name) ? "#3b82f6" :
+    /pendente/i.test(status.name)  ? "#f59e0b" :
+    "#6b7280"
+  );
+  return <Badge label={status.name} color={color} />;
+}
 
 export default function ManagerActivitiesPage() {
   const [activities, setActivities] = useState([]);
@@ -121,35 +141,72 @@ export default function ManagerActivitiesPage() {
 
       {/* Tabela */}
       {loading ? (
-        <p className="text-gray-400 text-sm">Carregando...</p>
+        <div className="space-y-2 animate-pulse">
+          {[1,2,3,4].map((i) => (
+            <div key={i} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 h-14" />
+          ))}
+        </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-700">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-800 text-gray-400 text-xs uppercase">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col style={{ width: "90px" }} />
+              <col style={{ width: "130px" }} />
+              <col />{/* descricao: ocupa o restante */}
+              <col style={{ width: "120px" }} />
+              <col style={{ width: "130px" }} />
+              <col style={{ width: "90px" }} />
+            </colgroup>
+            <thead className="bg-gray-800 border-b border-gray-700">
               <tr>
-                <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3">Colaborador</th>
-                <th className="px-4 py-3">Descricao</th>
-                <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Ticket</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wide whitespace-nowrap">Data</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wide">Colaborador</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wide">Titulo / Descricao</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wide whitespace-nowrap">Tipo</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wide whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wide whitespace-nowrap">Ticket</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {activities.map((a) => (
-                <tr key={a.id} className="bg-gray-900 hover:bg-gray-800 transition-colors">
-                  <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{a.task_date}</td>
-                  <td className="px-4 py-3 text-white font-medium">{a.user?.username}</td>
-                  <td className="px-4 py-3 text-gray-300 max-w-xs truncate">{a.description || a.title || "-"}</td>
-                  <td className="px-4 py-3 text-gray-400">{a.activityType?.name || "-"}</td>
-                  <td className="px-4 py-3 text-gray-400">{a.taskStatus?.name || "-"}</td>
-                  <td className="px-4 py-3 text-gray-400">{a.azure_ticket_id || "-"}</td>
+              {activities.map((a, idx) => (
+                <tr key={a.id} className={`hover:bg-gray-800 transition-colors ${idx % 2 === 0 ? "bg-gray-900" : "bg-gray-850"}`}>
+                  <td className="px-4 py-3 text-gray-300 whitespace-nowrap text-xs">{formatDateBR(a.task_date)}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-white font-medium text-xs truncate block">{a.user?.username ?? "—"}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="text-white text-xs leading-snug truncate">{a.title || "—"}</p>
+                    {a.description && a.description !== a.title && (
+                      <p className="text-gray-400 text-xs mt-0.5 truncate">{a.description}</p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {a.activityType
+                      ? <Badge label={a.activityType.name} color={a.activityType.color || "#6b7280"} />
+                      : <span className="text-gray-500 text-xs">—</span>
+                    }
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={a.taskStatus} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {a.azure_ticket_id ? (
+                      <a
+                        href={`https://dev.azure.com/appelsoft/Time%20Desktop%20-%20Desenvolvimento/_workitems/edit/${a.azure_ticket_id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-mono text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded text-xs hover:text-blue-300 transition-colors whitespace-nowrap"
+                      >
+                        #{a.azure_ticket_id}
+                      </a>
+                    ) : <span className="text-gray-500 text-xs">—</span>}
+                  </td>
                 </tr>
               ))}
               {activities.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                    Nenhuma atividade encontrada.
+                  <td colSpan={6} className="px-4 py-10 text-center">
+                    <p className="text-sm text-gray-400">Nenhuma atividade encontrada.</p>
                   </td>
                 </tr>
               )}
