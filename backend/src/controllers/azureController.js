@@ -13,6 +13,49 @@ const { success } = require("../utils/response");
 const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
+function encodeAzurePathSegment(value) {
+  const trimmed = value.trim();
+
+  try {
+    return encodeURIComponent(decodeURIComponent(trimmed));
+  } catch {
+    return encodeURIComponent(trimmed);
+  }
+}
+
+async function readAzureJson(response) {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!contentType.toLowerCase().includes("application/json")) {
+    const body = await response.text().catch(() => "");
+    const preview = body.replace(/\s+/g, " ").trim().slice(0, 120);
+
+    console.warn("[Azure DevOps] Resposta nao-JSON", {
+      status: response.status,
+      contentType,
+      bodyPreview: preview,
+    });
+
+    if (response.status === 203 || preview.startsWith("<!DOCTYPE") || preview.startsWith("<html")) {
+      throw new AppError(
+        "Azure DevOps retornou uma pagina de login em vez de JSON. Verifique o PAT, organizacao e projeto configurados.",
+        400
+      );
+    }
+
+    throw new AppError(
+      `Azure DevOps retornou uma resposta inesperada (HTTP ${response.status}). Verifique organizacao e projeto.`,
+      502
+    );
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    throw new AppError("Azure DevOps retornou JSON invalido.", 502);
+  }
+}
+
 const getTicket = asyncHandler(async (req, res) => {
   const { ticketId } = req.params;
 
@@ -38,16 +81,16 @@ const getTicket = asyncHandler(async (req, res) => {
   const encoded = Buffer.from(`:${token}`).toString("base64");
   // Decodifica antes de encodar para evitar duplo encoding
   // (cobre casos em que o usuario salvou o valor ja com %20 ou similar)
-  const safeOrg     = encodeURIComponent(decodeURIComponent(org.trim()));
-  const safeProject = encodeURIComponent(decodeURIComponent(project.trim()));
-  const url = `https://dev.azure.com/${safeOrg}/${safeProject}/_apis/wit/workitems/${ticketId}?api-version=7.1&$select=System.Title`;
+  const safeOrg     = encodeAzurePathSegment(org);
+  const safeProject = encodeAzurePathSegment(project);
+  const url = `https://dev.azure.com/${safeOrg}/${safeProject}/_apis/wit/workitems/${ticketId}?api-version=7.1&fields=System.Title`;
 
   let response;
   try {
     response = await fetch(url, {
       headers: {
         Authorization: `Basic ${encoded}`,
-        "Content-Type": "application/json",
+        Accept: "application/json",
       },
     });
   } catch {
@@ -55,7 +98,7 @@ const getTicket = asyncHandler(async (req, res) => {
   }
 
   if (response.status === 401 || response.status === 403) {
-    throw new AppError("Token Azure DevOps invalido ou sem permissao de leitura.", 401);
+    throw new AppError("Token Azure DevOps invalido ou sem permissao de leitura.", 400);
   }
   if (response.status === 404) {
     console.warn('Ticket nao encontrado:', url);
@@ -65,7 +108,7 @@ const getTicket = asyncHandler(async (req, res) => {
     throw new AppError(`Erro ao buscar ticket no Azure DevOps (HTTP ${response.status}).`, 502);
   }
 
-  const data = await response.json();
+  const data = await readAzureJson(response);
   const title = data?.fields?.["System.Title"];
 
   if (!title) {
