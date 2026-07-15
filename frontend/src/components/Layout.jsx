@@ -27,9 +27,18 @@ export default function Layout({ children }) {
     navigate("/login");
   }
 
-  const navItems = user?.role === "admin"
-    ? [...NAV_ITEMS, { to: "/admin", label: "Admin" }]
-    : NAV_ITEMS;
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(user?.role === "admin" ? [{ to: "/admin", label: "Admin" }] : []),
+    ...(user?.role === "manager" || user?.role === "admin"
+      ? [
+          { to: "/manager",            label: "Dashboard Gestor", exact: true },
+          { to: "/manager/employees",   label: "Equipe",            exact: true },
+          { to: "/manager/activities",  label: "Atividades Equipe", exact: false },
+          { to: "/manager/statistics",  label: "Relatorios Equipe", exact: true },
+        ]
+      : []),
+  ];
 
   return (
     <div className="min-h-screen flex bg-gray-900 text-gray-100">
@@ -66,7 +75,7 @@ export default function Layout({ children }) {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === "/"}
+              end={item.exact !== false}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 `flex items-center px-3 py-2.5 rounded text-sm font-medium transition-colors border-l-2 ${

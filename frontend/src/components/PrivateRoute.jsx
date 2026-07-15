@@ -1,7 +1,7 @@
 /**
  * Guarda de rota autenticada.
- * Redireciona para /login se não houver sessão ativa.
- * Se `requiredRole` for informado, redireciona para / se o usuário não tiver o role.
+ * Redireciona para /login se nao houver sessao ativa.
+ * Se `requiredRole` for informado (string ou array), redireciona para / se o usuario nao tiver o role.
  */
 
 import { Navigate } from "react-router-dom";
@@ -20,8 +20,11 @@ export default function PrivateRoute({ children, requiredRole }) {
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
-  if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/" replace />;
+  if (requiredRole) {
+    const allowed = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!allowed.includes(user?.role)) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return children;

@@ -17,6 +17,7 @@ const Task = require("./Task");
 const AuditLog = require("./AuditLog");
 const UserWebhook = require("./UserWebhook");
 const { applyAuditHooksToAll } = require("../utils/auditHooks");
+const UserManager = require("./UserManager");
 
 // Um usuário pertence a um cargo
 UserCargos.hasMany(User, { foreignKey: "cargo", as: "users" });
@@ -46,7 +47,24 @@ Task.belongsTo(TaskStatus, { foreignKey: "task_status_id", as: "taskStatus" });
 User.hasMany(UserWebhook, { foreignKey: "user_id", as: "webhooks" });
 UserWebhook.belongsTo(User, { foreignKey: "user_id", as: "user" });
 
-module.exports = { User, ActivityType, TaskStatus, WeeklyReport, Task, UserCargos, Setting, AuditLog, UserWebhook };
+// Manager <-> Employee many-to-many via UserManager
+User.belongsToMany(User, {
+  through: UserManager,
+  as: "employees",
+  foreignKey: "manager_id",
+  otherKey: "employee_id",
+});
+User.belongsToMany(User, {
+  through: UserManager,
+  as: "managers",
+  foreignKey: "employee_id",
+  otherKey: "manager_id",
+});
+// Direct belongsTo associations for include aliases in admin queries
+UserManager.belongsTo(User, { foreignKey: "manager_id", as: "manager" });
+UserManager.belongsTo(User, { foreignKey: "employee_id", as: "employee" });
+
+module.exports = { User, ActivityType, TaskStatus, WeeklyReport, Task, UserCargos, Setting, AuditLog, UserWebhook, UserManager };
 
 // Aplica hooks de auditoria em todos os models que representam dados de negócio.
 // AuditLog e Setting são excluídos intencionalmente:
