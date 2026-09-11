@@ -12,6 +12,15 @@ test("Login with valid credentials", async () => {
     expect(response.body).toHaveProperty("data");
     expect(response.body.data).toHaveProperty("token");
 });
+test("Login with invalid credentials", async () => {
+    const response = await request(app)
+    .post("/api/auth/login")
+    .send({ email: userDataValid.email, password: "wrongpassword" });
+    console.log(response.body);
+    expect(response.status).toBe(401);
+    expect(response.body).toHaveProperty("ok", false);
+    expect(response.body).toHaveProperty("message", "Email ou senha invalidos.");
+});
 
 beforeAll(async () =>{
     const response = await request(app)
