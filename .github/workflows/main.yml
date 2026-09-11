@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+
+    # Sobe um container de MySQL só pra essa execução do pipeline.
+    # MYSQL_DATABASE já cria o banco "weekly_reports_test" automaticamente.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: weekly_reports_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependências do backend
+        working-directory: backend
+        run: npm ci
+
+      - name: Sincronizar schema do banco de teste
+        working-directory: backend
+        run: npx cross-env DB_NAME=weekly_reports_test node src/scripts/syncDatabase.js
+
+      - name: Popular dados iniciais (cargos, status, etc.)
+        working-directory: backend
+        run: npx cross-env DB_NAME=weekly_reports_test node src/scripts/seedDatabase.js
+
+      - name: Rodar testes automatizados
+        working-directory: backend
+        run: npm test
