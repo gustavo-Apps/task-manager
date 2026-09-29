@@ -14,7 +14,7 @@ test("Login with valid credentials", async () => {
 });
 test("Login with invalid credentials", async () => {
     const response = await request(app)
-    .post("/api/auth/login/broken2")
+    .post("/api/auth/login")
     .send({ email: userDataValid.email, password: "wrongpassword" });
     console.log(response.body);
     expect(response.status).toBe(401);
