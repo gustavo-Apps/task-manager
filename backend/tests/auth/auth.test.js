@@ -44,7 +44,7 @@ test("Invalid registration data should return 400", async () => {
 
 test("E-mail already exists, return 409", async() => {
   const response =  await request(app)
-    .post("/api/auth/register/faker")
+    .post("/api/auth/register")
     .send(userDataValid);
   expect(response.status).toBe(409);
 })

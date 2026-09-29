@@ -7,7 +7,7 @@
 
 const router = require("express").Router();
 
-router.use("/aut", require("./auth.routes"));
+router.use("/auth", require("./auth.routes"));
 router.use("/tasks", require("./task.routes"));
 router.use("/reports", require("./report.routes"));
 router.use("/lookups", require("./lookup.routes"));
